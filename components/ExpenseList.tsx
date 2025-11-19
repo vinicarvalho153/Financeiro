@@ -99,8 +99,21 @@ export default function ExpenseList({ expenses, onDelete, onRefresh }: ExpenseLi
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <p className="text-sm text-gray-500">
-                  {expense.type === 'fixo' ? 'Gasto Fixo Mensal' : 'Gasto Parcelado'}
+                  {expense.type === 'fixo' 
+                    ? 'Gasto Fixo Mensal' 
+                    : expense.type === 'parcelado'
+                    ? 'Gasto Parcelado'
+                    : 'Gasto Único'}
                 </p>
+                {expense.type === 'unico' && expense.due_date && (
+                  <span className="text-xs text-gray-500">
+                    (Vencimento: {new Date(expense.due_date).toLocaleDateString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                    })})
+                  </span>
+                )}
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getPaidByColor(expense.paid_by)}`}>
                   Pago por: {getPaidByLabel(expense.paid_by)}
                 </span>

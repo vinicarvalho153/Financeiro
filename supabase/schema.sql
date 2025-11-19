@@ -88,12 +88,13 @@ CREATE TABLE IF NOT EXISTS expenses (
   name VARCHAR(255) NOT NULL,
   category VARCHAR(100) NOT NULL DEFAULT 'geral',
   amount DECIMAL(10, 2) NOT NULL CHECK (amount >= 0),
-  type VARCHAR(20) NOT NULL CHECK (type IN ('fixo', 'parcelado')),
+  type VARCHAR(20) NOT NULL CHECK (type IN ('fixo', 'parcelado', 'unico')),
   paid_by VARCHAR(20) NOT NULL DEFAULT 'conjunto' CHECK (paid_by IN ('person1', 'person2', 'vr', 'conjunto')),
   is_recurring BOOLEAN NOT NULL DEFAULT false,
   total_installments INT,
   notes TEXT,
   start_date DATE,
+  due_date DATE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

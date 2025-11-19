@@ -13,12 +13,13 @@ interface ExpenseFormProps {
     name: string
     category: string
     amount: number
-    type: 'fixo' | 'parcelado'
+    type: 'fixo' | 'parcelado' | 'unico'
     paid_by?: 'person1' | 'person2' | 'vr' | 'conjunto'
     notes?: string
     total_installments?: number
     paid_installments?: number
     first_due_date?: string
+    due_date?: string
   }) => void | Promise<void>
   onCancel: () => void
 }
@@ -26,7 +27,7 @@ interface ExpenseFormProps {
 export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseFormProps) {
   const { getConfigValue } = useConfig()
   const [formData, setFormData] = useState({
-    type: 'fixo' as 'fixo' | 'parcelado',
+    type: 'fixo' as 'fixo' | 'parcelado' | 'unico',
     name: '',
     category: 'geral',
     amount: 0,
@@ -34,6 +35,7 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
     total_installments: 1,
     paid_installments: 0,
     first_due_date: '',
+    due_date: '',
     notes: '',
   })
 
@@ -49,6 +51,7 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
         total_installments: expense.total_installments || 1,
         paid_installments: paidCount,
         first_due_date: expense.start_date ? expense.start_date.slice(0, 10) : '',
+        due_date: expense.due_date ? expense.due_date.slice(0, 10) : '',
         notes: expense.notes || '',
       })
     }
@@ -66,6 +69,7 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
       total_installments: formData.type === 'parcelado' ? formData.total_installments : undefined,
       paid_installments: formData.type === 'parcelado' ? formData.paid_installments : undefined,
       first_due_date: formData.type === 'parcelado' ? formData.first_due_date : undefined,
+      due_date: formData.type === 'unico' ? formData.due_date : undefined,
     })
   }
 
@@ -88,11 +92,12 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
             </label>
             <select
               value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'fixo' | 'parcelado' })}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'fixo' | 'parcelado' | 'unico' })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="fixo">Gasto Fixo Mensal</option>
               <option value="parcelado">Compra Parcelada</option>
+              <option value="unico">Gasto Único (Cartão, Fatura, etc.)</option>
             </select>
           </div>
 
@@ -159,7 +164,9 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
             <p className="text-xs text-gray-500 mt-1">
               {formData.type === 'fixo'
                 ? 'Valor mensal do gasto.'
-                : 'Valor total da compra. Será dividido automaticamente pelo número de parcelas.'}
+                : formData.type === 'parcelado'
+                ? 'Valor total da compra. Será dividido automaticamente pelo número de parcelas.'
+                : 'Valor único do gasto (ex: fatura de cartão, conta pontual).'}
             </p>
           </div>
 
@@ -317,6 +324,24 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
               </div>
             )}
           </>
+        )}
+
+        {formData.type === 'unico' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Data de Vencimento
+            </label>
+            <input
+              type="date"
+              value={formData.due_date}
+              onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Data em que este gasto deve ser pago (aparecerá na projeção apenas neste mês)
+            </p>
+          </div>
         )}
 
         <div>

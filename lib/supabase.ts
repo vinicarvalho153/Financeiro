@@ -41,12 +41,13 @@ export interface Expense {
   name: string
   category: string
   amount: number
-  type: 'fixo' | 'parcelado'
+  type: 'fixo' | 'parcelado' | 'unico'
   paid_by?: 'person1' | 'person2' | 'vr' | 'conjunto'
   is_recurring: boolean
   total_installments?: number | null
   notes?: string | null
   start_date?: string | null
+  due_date?: string | null
   created_at?: string
   updated_at?: string
   installments?: Installment[]

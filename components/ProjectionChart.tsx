@@ -45,8 +45,12 @@ export default function ProjectionChart({ salaries, expenses, installments, filt
       .filter(expense => expense.type === 'fixo')
       .reduce((sum, expense) => sum + expense.amount, 0)
 
+    // Separar gastos únicos por mês
+    const uniqueExpenses = filteredExpenses.filter(expense => expense.type === 'unico')
+
     console.log('📊 Gráfico - Despesas fixas:', recurringExpenses, '| Total de expenses:', filteredExpenses.length)
     console.log('📊 Gráfico - Parcelas:', installments.length, '| Pendentes:', installments.filter(inst => inst.status !== 'paid').length)
+    console.log('📊 Gráfico - Gastos únicos:', uniqueExpenses.length)
 
     // Filtrar parcelas pendentes e por pessoa (através da relação com expense)
     let pendingInstallments = installments.filter(inst => inst.status !== 'paid')
@@ -79,8 +83,17 @@ export default function ProjectionChart({ salaries, expenses, installments, filt
         })
         .reduce((sum, inst) => sum + inst.amount, 0)
       
-      // Total de despesas do mês (fixas + parcelas)
-      const expensesValue = recurringExpenses + monthInstallments
+      // Calcular gastos únicos deste mês
+      const monthUniqueExpenses = uniqueExpenses
+        .filter(expense => {
+          if (!expense.due_date) return false
+          const expenseDate = new Date(expense.due_date)
+          return expenseDate.getMonth() === monthDate.getMonth() && expenseDate.getFullYear() === monthDate.getFullYear()
+        })
+        .reduce((sum, expense) => sum + expense.amount, 0)
+      
+      // Total de despesas do mês (fixas + parcelas + gastos únicos)
+      const expensesValue = recurringExpenses + monthInstallments + monthUniqueExpenses
       
       // Saldo do mês (total - despesas)
       const netValue = totalSalaries - expensesValue

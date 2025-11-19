@@ -170,7 +170,19 @@ export default function Home() {
     .filter(installment => installment.status !== 'paid')
     .reduce((sum, installment) => sum + installment.amount, 0)
 
-  const totalDespesas = totalFixedExpenses + totalPendingInstallments
+  // Gastos únicos pendentes (vencimento futuro ou hoje)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const totalUniqueExpenses = expenses
+    .filter(expense => {
+      if (expense.type !== 'unico' || !expense.due_date) return false
+      const dueDate = new Date(expense.due_date)
+      dueDate.setHours(0, 0, 0, 0)
+      return dueDate >= today
+    })
+    .reduce((sum, expense) => sum + expense.amount, 0)
+
+  const totalDespesas = totalFixedExpenses + totalPendingInstallments + totalUniqueExpenses
   const saldoGeral = totalGeral - totalDespesas
 
   return (

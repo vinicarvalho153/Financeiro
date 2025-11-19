@@ -5,12 +5,13 @@ export interface ExpenseInput {
   name: string
   category: string
   amount: number
-  type: 'fixo' | 'parcelado'
+  type: 'fixo' | 'parcelado' | 'unico'
   paid_by?: 'person1' | 'person2' | 'vr' | 'conjunto'
   notes?: string
   total_installments?: number
   paid_installments?: number
   first_due_date?: string
+  due_date?: string
 }
 
 export async function getExpenses(): Promise<Expense[]> {
@@ -69,6 +70,7 @@ export async function createExpense(input: ExpenseInput): Promise<void> {
       total_installments: input.type === 'parcelado' ? input.total_installments ?? null : null,
       notes: input.notes ?? null,
       start_date: input.first_due_date ?? null,
+      due_date: input.type === 'unico' ? input.due_date ?? null : null,
     }])
     .select()
     .single()
