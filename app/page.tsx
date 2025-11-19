@@ -61,9 +61,14 @@ export default function Home() {
       await createSalary(salary)
       await loadSalaries()
       setShowForm(false)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao criar salário:', error)
-      alert('Erro ao criar salário. Verifique o console para mais detalhes.')
+      const errorMessage = error?.message || 'Erro desconhecido'
+      if (errorMessage.includes('CHECK constraint') || errorMessage.includes('person')) {
+        alert('⚠️ Erro: O banco de dados precisa ser atualizado.\n\nExecute o arquivo supabase/fix_database.sql no SQL Editor do Supabase para corrigir isso.')
+      } else {
+        alert(`Erro ao criar salário: ${errorMessage}\n\nVerifique o console para mais detalhes.`)
+      }
     }
   }
 
@@ -110,9 +115,14 @@ export default function Home() {
       await createExpense(expenseData)
       await loadExpenses()
       setShowExpenseForm(false)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao criar gasto:', error)
-      alert('Erro ao criar gasto. Verifique o console para mais detalhes.')
+      const errorMessage = error?.message || 'Erro desconhecido'
+      if (errorMessage.includes('CHECK constraint') || errorMessage.includes('paid_by')) {
+        alert('⚠️ Erro: O banco de dados precisa ser atualizado.\n\nExecute o arquivo supabase/fix_database.sql no SQL Editor do Supabase para corrigir isso.')
+      } else {
+        alert(`Erro ao criar gasto: ${errorMessage}\n\nVerifique o console para mais detalhes.`)
+      }
     }
   }
 
