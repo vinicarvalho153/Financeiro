@@ -11,7 +11,7 @@ import ExpenseForm from '@/components/ExpenseForm'
 import ExpenseList from '@/components/ExpenseList'
 import ConfigEditor from '@/components/ConfigEditor'
 import { useConfig } from '@/contexts/ConfigContext'
-import { Plus, TrendingUp, AlertCircle, Settings, Wallet } from 'lucide-react'
+import { Plus, TrendingUp, AlertCircle, Settings, Wallet, DollarSign } from 'lucide-react'
 
 export default function Home() {
   const { getConfigValue, reloadConfigs } = useConfig()
@@ -210,6 +210,41 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {/* Card de Saldo Restante - Destaque */}
+        <div className={`mb-8 rounded-xl shadow-lg p-8 border-2 ${
+          saldoGeral >= 0 
+            ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300' 
+            : 'bg-gradient-to-br from-red-50 to-rose-50 border-red-300'
+        }`}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`p-3 rounded-full ${
+              saldoGeral >= 0 
+                ? 'bg-green-100 text-green-600' 
+                : 'bg-red-100 text-red-600'
+            }`}>
+              <DollarSign size={28} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Saldo Restante
+              </h2>
+              <p className="text-sm text-gray-600">
+                Total disponível após despesas
+              </p>
+            </div>
+          </div>
+          <div className={`text-5xl font-bold ${
+            saldoGeral >= 0 ? 'text-green-600' : 'text-red-600'
+          }`}>
+            R$ {saldoGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </div>
+          <div className={`mt-2 text-sm font-medium ${
+            saldoGeral >= 0 ? 'text-green-700' : 'text-red-700'
+          }`}>
+            {saldoGeral >= 0 ? '✅ Saldo positivo' : '⚠️ Saldo negativo'}
+          </div>
+        </div>
 
         {/* Cards de Resumo */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
