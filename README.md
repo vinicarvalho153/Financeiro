@@ -129,9 +129,26 @@ Execute o script `supabase/schema.sql` para criar automaticamente:
 - `npm run start` - Inicia servidor de produção
 - `npm run lint` - Executa o linter
 
+## 🌐 Deploy no Vercel
+
+Se você fez deploy no Vercel, é necessário configurar as variáveis de ambiente no painel:
+
+1. Acesse: https://vercel.com/dashboard
+2. Selecione seu projeto
+3. Vá em **Settings** → **Environment Variables**
+4. Adicione as variáveis:
+   - `NEXT_PUBLIC_SUPABASE_URL` = sua URL do Supabase
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = sua chave anon do Supabase
+5. Marque todas as opções (Production, Preview, Development)
+6. **Faça um redeploy** após adicionar as variáveis
+
+📖 **Guia detalhado**: Veja o arquivo `VERCEL_SETUP.md` para instruções passo a passo com imagens.
+
 ## 🔒 Segurança
 
 ⚠️ **Importante**: O arquivo `.env.local` contém informações sensíveis e não deve ser commitado no Git. Ele já está no `.gitignore`.
+
+**No Vercel**: Configure as variáveis de ambiente no painel (não use `.env.local` em produção).
 
 Em produção, ajuste as políticas RLS (Row Level Security) do Supabase conforme sua necessidade de segurança.
 
