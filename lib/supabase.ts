@@ -25,15 +25,6 @@ export interface Salary {
   updated_at?: string
 }
 
-export interface MonthlyProjection {
-  month: string
-  total: number
-  person1: number
-  person2: number
-  conjunto: number
-  vr: number
-}
-
 export interface SiteConfig {
   id?: string
   key: string
