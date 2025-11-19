@@ -15,6 +15,7 @@ export interface ExpenseInput {
 
 export async function getExpenses(): Promise<Expense[]> {
   if (!isSupabaseConfigured) {
+    console.warn('⚠️ Supabase não configurado. Retornando array vazio para despesas.')
     return []
   }
 
@@ -22,13 +23,14 @@ export async function getExpenses(): Promise<Expense[]> {
     .from('expenses')
     .select('*, installments(*)')
     .order('created_at', { ascending: false })
-    .order('installments', { ascending: true })
 
   if (error) {
     console.error('Erro ao buscar gastos:', error)
+    console.error('Detalhes do erro:', JSON.stringify(error, null, 2))
     return []
   }
 
+  console.log('✅ Despesas carregadas:', data?.length || 0, 'registros')
   return data as Expense[]
 }
 

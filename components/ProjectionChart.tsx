@@ -32,6 +32,9 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
       .filter(expense => expense.type === 'fixo')
       .reduce((sum, expense) => sum + expense.amount, 0)
 
+    console.log('📊 Gráfico - Despesas fixas:', recurringExpenses, '| Total de expenses:', expenses.length)
+    console.log('📊 Gráfico - Parcelas:', installments.length, '| Pendentes:', installments.filter(inst => inst.status !== 'paid').length)
+
     // Filtrar parcelas pendentes
     const parcelInstallments = installments.filter(inst => inst.status !== 'paid')
 

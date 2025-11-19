@@ -49,11 +49,14 @@ export default function Home() {
     setLoadingExpenses(true)
     try {
       const data = await getExpenses()
+      console.log('📊 Carregando despesas:', data.length, 'registros encontrados')
       setExpenses(data)
       const allInstallments = data.flatMap(expense => expense.installments || [])
+      console.log('📊 Carregando parcelas:', allInstallments.length, 'parcelas encontradas')
       setInstallments(allInstallments)
     } catch (error) {
-      console.error('Erro ao carregar gastos:', error)
+      console.error('❌ Erro ao carregar gastos:', error)
+      alert('Erro ao carregar gastos. Verifique o console para mais detalhes.')
     } finally {
       setLoadingExpenses(false)
     }
