@@ -114,31 +114,12 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
           />
           <Line
             type="monotone"
-            dataKey="total"
-            name={getConfigValue('total_geral_label') || 'Total'}
-            stroke="#10b981"
-            strokeWidth={3}
-            dot={{ r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="expenses"
-            name="Despesas"
-            stroke="#ef4444"
-            strokeWidth={3}
-            dot={{ r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-          <Line
-            type="monotone"
             dataKey="net"
             name="Saldo"
             stroke="#3b82f6"
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            dot={{ r: 3 }}
-            activeDot={{ r: 5 }}
+            strokeWidth={3}
+            dot={{ r: 4 }}
+            activeDot={{ r: 6 }}
           />
         </LineChart>
       </ResponsiveContainer>
