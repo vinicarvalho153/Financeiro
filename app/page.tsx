@@ -4,18 +4,14 @@ import { useState, useEffect } from 'react'
 import { Salary, Expense, Installment, MonthlyProjection, isSupabaseConfigured } from '@/lib/supabase'
 import { getSalaries, createSalary, updateSalary, deleteSalary } from '@/lib/database'
 import { getExpenses, createExpense, deleteExpense, ExpenseInput } from '@/lib/expenses'
-import { getMonthlyProjections } from '@/lib/projections'
 import SalaryForm from '@/components/SalaryForm'
 import SalaryList from '@/components/SalaryList'
 import ProjectionChart from '@/components/ProjectionChart'
-import ProjectionEditor from '@/components/ProjectionEditor'
-import ProjectionMonthSelector from '@/components/ProjectionMonthSelector'
 import ExpenseForm from '@/components/ExpenseForm'
 import ExpenseList from '@/components/ExpenseList'
 import ConfigEditor from '@/components/ConfigEditor'
 import { useConfig } from '@/contexts/ConfigContext'
-import { Plus, TrendingUp, AlertCircle, Settings, Wallet, Edit } from 'lucide-react'
-import { addMonths } from 'date-fns'
+import { Plus, TrendingUp, AlertCircle, Settings, Wallet } from 'lucide-react'
 
 export default function Home() {
   const { getConfigValue, reloadConfigs } = useConfig()
@@ -35,7 +31,6 @@ export default function Home() {
   useEffect(() => {
     loadSalaries()
     loadExpenses()
-    loadMonthlyProjections()
   }, [])
 
   const loadSalaries = async () => {
@@ -122,7 +117,6 @@ export default function Home() {
     try {
       await createExpense(expenseData)
       await loadExpenses()
-      await loadMonthlyProjections()
       setShowExpenseForm(false)
     } catch (error: any) {
       console.error('Erro ao criar gasto:', error)
@@ -140,70 +134,10 @@ export default function Home() {
       try {
         await deleteExpense(id)
         await loadExpenses()
-        await loadMonthlyProjections()
       } catch (error) {
         console.error('Erro ao excluir gasto:', error)
         alert('Erro ao excluir gasto. Verifique o console para mais detalhes.')
       }
-    }
-  }
-
-  const loadMonthlyProjections = async () => {
-    try {
-      const projections = await getMonthlyProjections()
-      const projectionsMap: { [key: string]: { total: number; expenses: number } } = {}
-      
-      projections.forEach(proj => {
-        const key = `${proj.year}-${proj.month}`
-        projectionsMap[key] = {
-          total: proj.total,
-          expenses: proj.expenses,
-        }
-      })
-      
-      setMonthlyProjections(projectionsMap)
-    } catch (error) {
-      console.error('Erro ao carregar projeções mensais:', error)
-    }
-  }
-
-  const handleEditProjection = (year: number, month: number) => {
-    setEditingProjection({ year, month })
-  }
-
-  const handleProjectionSave = async () => {
-    setEditingProjection(null)
-    await loadMonthlyProjections()
-  }
-
-  const handleProjectionCancel = () => {
-    setEditingProjection(null)
-  }
-
-  const getDefaultProjectionValues = (year: number, month: number) => {
-    // Calcular valores padrão para o mês específico
-    const allSalaries = salaries
-    const avgTotal = allSalaries.length > 0
-      ? allSalaries.reduce((sum, s) => sum + s.value, 0) / allSalaries.length
-      : 0
-
-    const recurringExpenses = expenses
-      .filter(expense => expense.type === 'fixo')
-      .reduce((sum, expense) => sum + expense.amount, 0)
-
-    const parcelInstallments = installments.filter(inst => inst.status !== 'paid')
-    const monthDate = new Date(year, month - 1, 1)
-    
-    const monthInstallments = parcelInstallments
-      .filter(inst => {
-        const instDate = new Date(inst.due_date)
-        return instDate.getMonth() === monthDate.getMonth() && instDate.getFullYear() === monthDate.getFullYear()
-      })
-      .reduce((sum, inst) => sum + inst.amount, 0)
-
-    return {
-      total: avgTotal,
-      expenses: recurringExpenses + monthInstallments,
     }
   }
 
@@ -342,70 +276,18 @@ export default function Home() {
 
         {/* Gráfico de Projeção */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="text-blue-600" size={24} />
-              <h2 className="text-2xl font-bold text-gray-900">
-                {getConfigValue('projection_title') || 'Projeção de Salários (Próximos 12 Meses)'}
-              </h2>
-            </div>
-            <button
-              onClick={() => setShowProjectionSelector(!showProjectionSelector)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              title="Editar projeções mensais"
-            >
-              <Edit size={18} />
-              {showProjectionSelector ? 'Fechar Editor' : 'Editar Projeções'}
-            </button>
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="text-blue-600" size={24} />
+            <h2 className="text-2xl font-bold text-gray-900">
+              {getConfigValue('projection_title') || 'Projeção de Salários (Próximos 12 Meses)'}
+            </h2>
           </div>
           <ProjectionChart 
             salaries={salaries} 
             expenses={expenses} 
             installments={installments}
-            monthlyProjections={monthlyProjections}
-            onEditProjection={handleEditProjection}
           />
-          
-          {/* Seletor de Mês para Editar */}
-          {showProjectionSelector && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Selecione o mês para editar a projeção:
-              </h3>
-              <ProjectionMonthSelector onSelectMonth={(year, month) => {
-                handleEditProjection(year, month)
-                setShowProjectionSelector(false)
-              }} />
-            </div>
-          )}
         </div>
-
-        {/* Editor de Projeção Mensal */}
-        {editingProjection && (() => {
-          const projectionKey = `${editingProjection.year}-${editingProjection.month}`
-          const existingProjection = monthlyProjections[projectionKey]
-          const defaults = getDefaultProjectionValues(editingProjection.year, editingProjection.month)
-          
-          return (
-            <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-              <ProjectionEditor
-                year={editingProjection.year}
-                month={editingProjection.month}
-                initialProjection={existingProjection ? {
-                  id: '',
-                  year: editingProjection.year,
-                  month: editingProjection.month,
-                  total: existingProjection.total,
-                  expenses: existingProjection.expenses,
-                } : null}
-                defaultTotal={defaults.total}
-                defaultExpenses={defaults.expenses}
-                onSave={handleProjectionSave}
-                onCancel={handleProjectionCancel}
-              />
-            </div>
-          )
-        })()}
 
         {/* Lista de Salários */}
         <div className="bg-white rounded-lg shadow-md p-6">
