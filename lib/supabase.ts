@@ -78,7 +78,7 @@ export interface MonthlyProjection {
   id?: string
   year: number
   month: number
-  conjunto: number
+  total: number
   expenses: number
   created_at?: string
   updated_at?: string

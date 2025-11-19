@@ -12,7 +12,7 @@ interface ProjectionEditorProps {
   year: number
   month: number
   initialProjection?: MonthlyProjection | null
-  defaultConjunto: number
+  defaultTotal: number
   defaultExpenses: number
   onSave: () => void
   onCancel: () => void
@@ -22,20 +22,27 @@ export default function ProjectionEditor({
   year,
   month,
   initialProjection,
-  defaultConjunto,
+  defaultTotal,
   defaultExpenses,
   onSave,
   onCancel,
 }: ProjectionEditorProps) {
   const { getConfigValue } = useConfig()
   const [formData, setFormData] = useState({
-    conjunto: initialProjection?.conjunto ?? defaultConjunto,
+    total: initialProjection?.total ?? defaultTotal,
     expenses: initialProjection?.expenses ?? defaultExpenses,
   })
   const [saving, setSaving] = useState(false)
 
   const monthDate = new Date(year, month - 1, 1)
   const monthLabel = format(monthDate, 'MMMM yyyy', { locale: ptBR })
+
+  useEffect(() => {
+    setFormData({
+      total: initialProjection?.total ?? defaultTotal,
+      expenses: initialProjection?.expenses ?? defaultExpenses,
+    })
+  }, [initialProjection, defaultTotal, defaultExpenses])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,7 +52,7 @@ export default function ProjectionEditor({
       await upsertMonthlyProjection({
         year,
         month,
-        conjunto: formData.conjunto,
+        total: formData.total,
         expenses: formData.expenses,
       })
       onSave()
@@ -81,19 +88,19 @@ export default function ProjectionEditor({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {getConfigValue('conjunto_label') || 'Salário Conjunto'} (R$)
+              {getConfigValue('total_geral_label') || 'Total'} (R$)
             </label>
             <input
               type="number"
               step="0.01"
               min="0"
-              value={formData.conjunto}
-              onChange={(e) => setFormData({ ...formData, conjunto: parseFloat(e.target.value) || 0 })}
+              value={formData.total}
+              onChange={(e) => setFormData({ ...formData, total: parseFloat(e.target.value) || 0 })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              Padrão: R$ {defaultConjunto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              Padrão: R$ {defaultTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
 

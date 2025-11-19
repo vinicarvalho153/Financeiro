@@ -12,13 +12,13 @@ interface ProjectionChartProps {
   salaries: Salary[]
   expenses: Expense[]
   installments: Installment[]
-  monthlyProjections?: { [key: string]: { conjunto: number; expenses: number } }
+  monthlyProjections?: { [key: string]: { total: number; expenses: number } }
   onEditProjection?: (year: number, month: number) => void
 }
 
 interface ChartData {
   month: string
-  conjunto: number
+  total: number
   expenses: number
 }
 
@@ -27,10 +27,10 @@ export default function ProjectionChart({ salaries, expenses, installments, mont
   const [chartData, setChartData] = useState<ChartData[]>([])
 
   useEffect(() => {
-    // Calcular valor médio apenas de salários conjuntos (padrão)
-    const conjuntoSalaries = salaries.filter(s => s.person === 'conjunto')
-    const avgConjunto = conjuntoSalaries.length > 0
-      ? conjuntoSalaries.reduce((sum, s) => sum + s.value, 0) / conjuntoSalaries.length
+    // Calcular valor médio total de todos os salários (padrão)
+    const allSalaries = salaries
+    const avgTotal = allSalaries.length > 0
+      ? allSalaries.reduce((sum, s) => sum + s.value, 0) / allSalaries.length
       : 0
 
     // Calcular despesas fixas (padrão)
@@ -52,12 +52,12 @@ export default function ProjectionChart({ salaries, expenses, installments, mont
       const projectionKey = `${year}-${month}`
 
       // Verificar se existe projeção customizada para este mês
-      let conjuntoValue = avgConjunto
+      let totalValue = avgTotal
       let expensesValue = recurringExpenses
 
       if (monthlyProjections && monthlyProjections[projectionKey]) {
         // Usar valores customizados se disponíveis
-        conjuntoValue = monthlyProjections[projectionKey].conjunto
+        totalValue = monthlyProjections[projectionKey].total
         expensesValue = monthlyProjections[projectionKey].expenses
       } else {
         // Usar valores calculados automaticamente
@@ -75,7 +75,7 @@ export default function ProjectionChart({ salaries, expenses, installments, mont
 
       projection.push({
         month: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
-        conjunto: conjuntoValue,
+        total: totalValue,
         expenses: expensesValue,
       })
     }
@@ -83,7 +83,7 @@ export default function ProjectionChart({ salaries, expenses, installments, mont
     setChartData(projection)
   }, [salaries, expenses, installments, monthlyProjections])
 
-  const hasData = chartData.some(item => item.conjunto > 0 || item.expenses > 0)
+  const hasData = chartData.some(item => item.total > 0 || item.expenses > 0)
 
   if (!hasData) {
     return (
@@ -126,8 +126,8 @@ export default function ProjectionChart({ salaries, expenses, installments, mont
           />
           <Line
             type="monotone"
-            dataKey="conjunto"
-            name={getConfigValue('conjunto_label') || 'Salário Conjunto'}
+            dataKey="total"
+            name={getConfigValue('total_geral_label') || 'Total'}
             stroke="#10b981"
             strokeWidth={3}
             dot={{ r: 4 }}

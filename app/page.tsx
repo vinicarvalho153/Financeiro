@@ -151,12 +151,12 @@ export default function Home() {
   const loadMonthlyProjections = async () => {
     try {
       const projections = await getMonthlyProjections()
-      const projectionsMap: { [key: string]: { conjunto: number; expenses: number } } = {}
+      const projectionsMap: { [key: string]: { total: number; expenses: number } } = {}
       
       projections.forEach(proj => {
         const key = `${proj.year}-${proj.month}`
         projectionsMap[key] = {
-          conjunto: proj.conjunto,
+          total: proj.total,
           expenses: proj.expenses,
         }
       })
@@ -182,9 +182,9 @@ export default function Home() {
 
   const getDefaultProjectionValues = (year: number, month: number) => {
     // Calcular valores padrão para o mês específico
-    const conjuntoSalaries = salaries.filter(s => s.person === 'conjunto')
-    const avgConjunto = conjuntoSalaries.length > 0
-      ? conjuntoSalaries.reduce((sum, s) => sum + s.value, 0) / conjuntoSalaries.length
+    const allSalaries = salaries
+    const avgTotal = allSalaries.length > 0
+      ? allSalaries.reduce((sum, s) => sum + s.value, 0) / allSalaries.length
       : 0
 
     const recurringExpenses = expenses
@@ -202,7 +202,7 @@ export default function Home() {
       .reduce((sum, inst) => sum + inst.amount, 0)
 
     return {
-      conjunto: avgConjunto,
+      total: avgTotal,
       expenses: recurringExpenses + monthInstallments,
     }
   }
@@ -275,7 +275,7 @@ export default function Home() {
         )}
 
         {/* Cards de Resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="text-sm text-gray-500 mb-1">
               {getConfigValue('total_geral_label') || 'Total Geral'}
@@ -286,10 +286,10 @@ export default function Home() {
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="text-sm text-gray-500 mb-1">
-              {getConfigValue('total_conjunto_label') || 'Salário Conjunto'}
+              Total Despesas
             </div>
-            <div className="text-2xl font-bold text-green-600">
-              R$ {totalConjunto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            <div className="text-2xl font-bold text-red-600">
+              R$ {totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">
@@ -314,22 +314,6 @@ export default function Home() {
             </div>
             <div className="text-2xl font-bold text-orange-600">
               R$ {totalVR.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-sm text-gray-500 mb-1">
-              Total Despesas
-            </div>
-            <div className="text-2xl font-bold text-red-600">
-              R$ {totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-sm text-gray-500 mb-1">
-              Saldo Projetado
-            </div>
-            <div className={`text-2xl font-bold ${saldoGeral >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-              R$ {saldoGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
           </div>
         </div>
@@ -411,10 +395,10 @@ export default function Home() {
                   id: '',
                   year: editingProjection.year,
                   month: editingProjection.month,
-                  conjunto: existingProjection.conjunto,
+                  total: existingProjection.total,
                   expenses: existingProjection.expenses,
                 } : null}
-                defaultConjunto={defaults.conjunto}
+                defaultTotal={defaults.total}
                 defaultExpenses={defaults.expenses}
                 onSave={handleProjectionSave}
                 onCancel={handleProjectionCancel}

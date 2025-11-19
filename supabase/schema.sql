@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS projection_monthly (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   year INT NOT NULL,
   month INT NOT NULL CHECK (month >= 1 AND month <= 12),
-  conjunto DECIMAL(10, 2) DEFAULT 0,
+  total DECIMAL(10, 2) DEFAULT 0,
   expenses DECIMAL(10, 2) DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

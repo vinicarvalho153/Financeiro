@@ -53,7 +53,7 @@ export async function upsertMonthlyProjection(projection: Omit<MonthlyProjection
     .upsert({
       year: projection.year,
       month: projection.month,
-      conjunto: projection.conjunto,
+      total: projection.total,
       expenses: projection.expenses,
       updated_at: new Date().toISOString(),
     }, {
