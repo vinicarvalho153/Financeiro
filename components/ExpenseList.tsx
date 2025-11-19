@@ -3,7 +3,7 @@
 import { Expense, Installment } from '@/lib/supabase'
 import { updateInstallmentStatus } from '@/lib/expenses'
 import { useConfig } from '@/contexts/ConfigContext'
-import { Clock, CreditCard, Trash2 } from 'lucide-react'
+import { Clock, CreditCard, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
 
 interface ExpenseListProps {
@@ -15,6 +15,7 @@ interface ExpenseListProps {
 export default function ExpenseList({ expenses, onDelete, onRefresh }: ExpenseListProps) {
   const { getConfigValue } = useConfig()
   const [updating, setUpdating] = useState<string | null>(null)
+  const [expandedExpenses, setExpandedExpenses] = useState<Set<string>>(new Set())
 
   const getPaidByLabel = (paidBy: string | undefined) => {
     switch (paidBy) {
@@ -65,6 +66,16 @@ export default function ExpenseList({ expenses, onDelete, onRefresh }: ExpenseLi
     } finally {
       setUpdating(null)
     }
+  }
+
+  const toggleExpense = (expenseId: string) => {
+    const newExpanded = new Set(expandedExpenses)
+    if (newExpanded.has(expenseId)) {
+      newExpanded.delete(expenseId)
+    } else {
+      newExpanded.add(expenseId)
+    }
+    setExpandedExpenses(newExpanded)
   }
 
   return (
@@ -118,50 +129,64 @@ export default function ExpenseList({ expenses, onDelete, onRefresh }: ExpenseLi
           </div>
 
           {expense.type === 'parcelado' && expense.installments && expense.installments.length > 0 && (
-            <div className="p-4 bg-gray-50">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <CreditCard size={16} />
-                Parcelas
-              </h4>
-              <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-                {expense.installments.map((installment) => (
-                  <div
-                    key={installment.id}
-                    className="flex items-center justify-between p-3 bg-white rounded border"
-                  >
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        Parcela {installment.installment_number}/{expense.total_installments}
-                      </p>
-                      <p className="text-sm text-gray-500 flex items-center gap-1">
-                        <Clock size={14} />
-                        Vencimento:{' '}
-                        {new Date(installment.due_date).toLocaleDateString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                        })}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-semibold text-gray-900">
-                        R$ {installment.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
-                      <button
-                        onClick={() => handleInstallmentStatus(installment)}
-                        disabled={updating === installment.id}
-                        className={`mt-2 px-3 py-1 rounded-full text-xs font-semibold ${
-                          installment.status === 'paid'
-                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                            : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+            <div className="border-t">
+              <button
+                onClick={() => expense.id && toggleExpense(expense.id)}
+                className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+              >
+                <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <CreditCard size={16} />
+                  Parcelas ({expense.installments.filter(inst => inst.status === 'paid').length}/{expense.installments.length} pagas)
+                </h4>
+                {expense.id && expandedExpenses.has(expense.id) ? (
+                  <ChevronUp size={20} className="text-gray-500" />
+                ) : (
+                  <ChevronDown size={20} className="text-gray-500" />
+                )}
+              </button>
+              {expense.id && expandedExpenses.has(expense.id) && (
+                <div className="p-4 bg-gray-50">
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                    {expense.installments.map((installment) => (
+                      <div
+                        key={installment.id}
+                        className="flex items-center justify-between p-3 bg-white rounded border"
                       >
-                        {installment.status === 'paid' ? 'Pago' : 'Pendente'}
-                      </button>
-                    </div>
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            Parcela {installment.installment_number}/{expense.total_installments}
+                          </p>
+                          <p className="text-sm text-gray-500 flex items-center gap-1">
+                            <Clock size={14} />
+                            Vencimento:{' '}
+                            {new Date(installment.due_date).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-semibold text-gray-900">
+                            R$ {installment.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                          <button
+                            onClick={() => handleInstallmentStatus(installment)}
+                            disabled={updating === installment.id}
+                            className={`mt-2 px-3 py-1 rounded-full text-xs font-semibold ${
+                              installment.status === 'paid'
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {installment.status === 'paid' ? 'Pago' : 'Pendente'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
           )}
         </div>
