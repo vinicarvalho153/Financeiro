@@ -74,7 +74,14 @@ export default function ExpenseList({ expenses, onDelete, onRefresh }: ExpenseLi
           <div className="flex flex-col md:flex-row md:items-center justify-between p-4 border-b bg-gray-50">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-semibold text-gray-900">{expense.name}</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {expense.name}
+                  {expense.type === 'parcelado' && expense.installments && expense.installments.length > 0 && (
+                    <span className="ml-2 text-sm font-normal text-gray-600">
+                      ({expense.installments.filter(inst => inst.status === 'paid').length}/{expense.installments.length})
+                    </span>
+                  )}
+                </h3>
                 <span className="text-xs uppercase tracking-wide text-gray-500 bg-gray-200 px-2 py-0.5 rounded">
                   {expense.category}
                 </span>
