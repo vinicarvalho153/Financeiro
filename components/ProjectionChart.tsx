@@ -6,11 +6,14 @@ import { Salary, Expense, Installment } from '@/lib/supabase'
 import { useConfig } from '@/contexts/ConfigContext'
 import { format, addMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { getMonthlyProjections } from '@/lib/projections'
 
 interface ProjectionChartProps {
   salaries: Salary[]
   expenses: Expense[]
   installments: Installment[]
+  monthlyProjections?: { [key: string]: { conjunto: number; expenses: number } }
+  onEditProjection?: (year: number, month: number) => void
 }
 
 interface ChartData {
@@ -19,19 +22,18 @@ interface ChartData {
   expenses: number
 }
 
-export default function ProjectionChart({ salaries, expenses, installments }: ProjectionChartProps) {
+export default function ProjectionChart({ salaries, expenses, installments, monthlyProjections, onEditProjection }: ProjectionChartProps) {
   const { getConfigValue } = useConfig()
   const [chartData, setChartData] = useState<ChartData[]>([])
 
   useEffect(() => {
-    // Calcular valor médio apenas de salários conjuntos
+    // Calcular valor médio apenas de salários conjuntos (padrão)
     const conjuntoSalaries = salaries.filter(s => s.person === 'conjunto')
-
     const avgConjunto = conjuntoSalaries.length > 0
       ? conjuntoSalaries.reduce((sum, s) => sum + s.value, 0) / conjuntoSalaries.length
       : 0
 
-    // Calcular despesas fixas
+    // Calcular despesas fixas (padrão)
     const recurringExpenses = expenses
       .filter(expense => expense.type === 'fixo')
       .reduce((sum, expense) => sum + expense.amount, 0)
@@ -44,28 +46,42 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
 
     for (let i = 0; i < 12; i++) {
       const monthDate = addMonths(today, i)
+      const year = monthDate.getFullYear()
+      const month = monthDate.getMonth() + 1
       const monthLabel = format(monthDate, 'MMM/yyyy', { locale: ptBR })
+      const projectionKey = `${year}-${month}`
 
-      // Calcular parcelas deste mês
-      const monthInstallments = parcelInstallments
-        .filter(inst => {
-          const instDate = new Date(inst.due_date)
-          return instDate.getMonth() === monthDate.getMonth() && instDate.getFullYear() === monthDate.getFullYear()
-        })
-        .reduce((sum, inst) => sum + inst.amount, 0)
+      // Verificar se existe projeção customizada para este mês
+      let conjuntoValue = avgConjunto
+      let expensesValue = recurringExpenses
 
-      // Total de despesas do mês (fixas + parcelas)
-      const totalExpenses = recurringExpenses + monthInstallments
+      if (monthlyProjections && monthlyProjections[projectionKey]) {
+        // Usar valores customizados se disponíveis
+        conjuntoValue = monthlyProjections[projectionKey].conjunto
+        expensesValue = monthlyProjections[projectionKey].expenses
+      } else {
+        // Usar valores calculados automaticamente
+        // Calcular parcelas deste mês
+        const monthInstallments = parcelInstallments
+          .filter(inst => {
+            const instDate = new Date(inst.due_date)
+            return instDate.getMonth() === monthDate.getMonth() && instDate.getFullYear() === monthDate.getFullYear()
+          })
+          .reduce((sum, inst) => sum + inst.amount, 0)
+        
+        // Total de despesas do mês (fixas + parcelas)
+        expensesValue = recurringExpenses + monthInstallments
+      }
 
       projection.push({
         month: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
-        conjunto: avgConjunto,
-        expenses: totalExpenses,
+        conjunto: conjuntoValue,
+        expenses: expensesValue,
       })
     }
 
     setChartData(projection)
-  }, [salaries, expenses, installments])
+  }, [salaries, expenses, installments, monthlyProjections])
 
   const hasData = chartData.some(item => item.conjunto > 0 || item.expenses > 0)
 

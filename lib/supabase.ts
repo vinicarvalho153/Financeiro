@@ -73,3 +73,13 @@ export interface Installment {
   updated_at?: string
   expense?: Expense
 }
+
+export interface MonthlyProjection {
+  id?: string
+  year: number
+  month: number
+  conjunto: number
+  expenses: number
+  created_at?: string
+  updated_at?: string
+}
