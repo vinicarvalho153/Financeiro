@@ -2,6 +2,7 @@
 
 import { Expense, Installment } from '@/lib/supabase'
 import { updateInstallmentStatus } from '@/lib/expenses'
+import { useConfig } from '@/contexts/ConfigContext'
 import { Clock, CreditCard, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -12,7 +13,38 @@ interface ExpenseListProps {
 }
 
 export default function ExpenseList({ expenses, onDelete, onRefresh }: ExpenseListProps) {
+  const { getConfigValue } = useConfig()
   const [updating, setUpdating] = useState<string | null>(null)
+
+  const getPaidByLabel = (paidBy: string | undefined) => {
+    switch (paidBy) {
+      case 'conjunto':
+        return getConfigValue('conjunto_label') || 'Salário Conjunto'
+      case 'person1':
+        return getConfigValue('person1_name') || 'Pessoa 1'
+      case 'person2':
+        return getConfigValue('person2_name') || 'Pessoa 2'
+      case 'vr':
+        return getConfigValue('vr_label') || 'Vale Refeição (VR)'
+      default:
+        return 'Conjunto'
+    }
+  }
+
+  const getPaidByColor = (paidBy: string | undefined) => {
+    switch (paidBy) {
+      case 'conjunto':
+        return 'bg-green-100 text-green-800'
+      case 'person1':
+        return 'bg-blue-100 text-blue-800'
+      case 'person2':
+        return 'bg-purple-100 text-purple-800'
+      case 'vr':
+        return 'bg-orange-100 text-orange-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
 
   if (expenses.length === 0) {
     return (
@@ -47,9 +79,14 @@ export default function ExpenseList({ expenses, onDelete, onRefresh }: ExpenseLi
                   {expense.category}
                 </span>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
-                {expense.type === 'fixo' ? 'Gasto Fixo Mensal' : 'Gasto Parcelado'}
-              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-sm text-gray-500">
+                  {expense.type === 'fixo' ? 'Gasto Fixo Mensal' : 'Gasto Parcelado'}
+                </p>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getPaidByColor(expense.paid_by)}`}>
+                  Pago por: {getPaidByLabel(expense.paid_by)}
+                </span>
+              </div>
               {expense.notes && (
                 <p className="text-sm text-gray-600 mt-2">{expense.notes}</p>
               )}

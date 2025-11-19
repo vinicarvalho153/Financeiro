@@ -6,6 +6,7 @@ export interface ExpenseInput {
   category: string
   amount: number
   type: 'fixo' | 'parcelado'
+  paid_by?: 'person1' | 'person2' | 'vr' | 'conjunto'
   notes?: string
   total_installments?: number
   first_due_date?: string
@@ -60,6 +61,7 @@ export async function createExpense(input: ExpenseInput): Promise<void> {
       category: input.category,
       amount: input.amount,
       type: input.type,
+      paid_by: input.paid_by || 'conjunto',
       is_recurring: input.type === 'fixo',
       total_installments: input.type === 'parcelado' ? input.total_installments ?? null : null,
       notes: input.notes ?? null,

@@ -21,6 +21,8 @@ export default function SalaryList({ salaries, onEdit, onDelete }: SalaryListPro
         return getConfigValue('person1_name') || 'Pessoa 1'
       case 'person2':
         return getConfigValue('person2_name') || 'Pessoa 2'
+      case 'vr':
+        return getConfigValue('vr_label') || 'Vale Refeição (VR)'
       default:
         return person
     }
@@ -34,13 +36,17 @@ export default function SalaryList({ salaries, onEdit, onDelete }: SalaryListPro
         return 'bg-blue-100 text-blue-800'
       case 'person2':
         return 'bg-purple-100 text-purple-800'
+      case 'vr':
+        return 'bg-orange-100 text-orange-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
   }
 
   const getPersonIcon = (person: string) => {
-    return person === 'conjunto' ? <Users size={16} /> : <User size={16} />
+    if (person === 'conjunto') return <Users size={16} />
+    if (person === 'vr') return <User size={16} />
+    return <User size={16} />
   }
 
   if (salaries.length === 0) {

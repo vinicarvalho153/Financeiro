@@ -140,7 +140,11 @@ export default function Home() {
     .filter(s => s.person === 'person2')
     .reduce((sum, s) => sum + s.value, 0)
 
-  const totalGeral = totalConjunto + totalPerson1 + totalPerson2
+  const totalVR = salaries
+    .filter(s => s.person === 'vr')
+    .reduce((sum, s) => sum + s.value, 0)
+
+  const totalGeral = totalConjunto + totalPerson1 + totalPerson2 + totalVR
 
   const totalFixedExpenses = expenses
     .filter(expense => expense.type === 'fixo')
@@ -192,7 +196,7 @@ export default function Home() {
         )}
 
         {/* Cards de Resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="text-sm text-gray-500 mb-1">
               {getConfigValue('total_geral_label') || 'Total Geral'}
@@ -223,6 +227,14 @@ export default function Home() {
             </div>
             <div className="text-2xl font-bold text-purple-600">
               R$ {totalPerson2.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="text-sm text-gray-500 mb-1">
+              {getConfigValue('vr_label') || 'Vale Refeição (VR)'}
+            </div>
+            <div className="text-2xl font-bold text-orange-600">
+              R$ {totalVR.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { X, Calculator, Calendar } from 'lucide-react'
 import { Expense } from '@/lib/supabase'
+import { useConfig } from '@/contexts/ConfigContext'
 import { addMonths, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -13,6 +14,7 @@ interface ExpenseFormProps {
     category: string
     amount: number
     type: 'fixo' | 'parcelado'
+    paid_by?: 'person1' | 'person2' | 'vr' | 'conjunto'
     notes?: string
     total_installments?: number
     first_due_date?: string
@@ -21,11 +23,13 @@ interface ExpenseFormProps {
 }
 
 export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseFormProps) {
+  const { getConfigValue } = useConfig()
   const [formData, setFormData] = useState({
     type: 'fixo' as 'fixo' | 'parcelado',
     name: '',
     category: 'geral',
     amount: 0,
+    paid_by: 'conjunto' as 'person1' | 'person2' | 'vr' | 'conjunto',
     total_installments: 1,
     first_due_date: '',
     notes: '',
@@ -38,6 +42,7 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
         name: expense.name,
         category: expense.category,
         amount: expense.amount,
+        paid_by: expense.paid_by || 'conjunto',
         total_installments: expense.total_installments || 1,
         first_due_date: expense.start_date ? expense.start_date.slice(0, 10) : '',
         notes: expense.notes || '',
@@ -52,6 +57,7 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
       category: formData.category,
       amount: formData.amount,
       type: formData.type,
+      paid_by: formData.paid_by,
       notes: formData.notes,
       total_installments: formData.type === 'parcelado' ? formData.total_installments : undefined,
       first_due_date: formData.type === 'parcelado' ? formData.first_due_date : undefined,
@@ -87,17 +93,33 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Categoria
+              Pago Por
             </label>
-            <input
-              type="text"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            <select
+              value={formData.paid_by}
+              onChange={(e) => setFormData({ ...formData, paid_by: e.target.value as any })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Ex: Moradia, Transporte, etc."
-              required
-            />
+            >
+              <option value="conjunto">{getConfigValue('conjunto_label') || 'Salário Conjunto'}</option>
+              <option value="person1">{getConfigValue('person1_name') || 'Pessoa 1'}</option>
+              <option value="person2">{getConfigValue('person2_name') || 'Pessoa 2'}</option>
+              <option value="vr">{getConfigValue('vr_label') || 'Vale Refeição (VR)'}</option>
+            </select>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Categoria
+          </label>
+          <input
+            type="text"
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Ex: Moradia, Transporte, etc."
+            required
+          />
         </div>
 
         <div>

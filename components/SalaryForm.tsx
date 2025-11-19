@@ -14,7 +14,7 @@ interface SalaryFormProps {
 export default function SalaryForm({ salary, onSubmit, onCancel }: SalaryFormProps) {
   const { getConfigValue } = useConfig()
   const [formData, setFormData] = useState({
-    person: 'conjunto' as 'person1' | 'person2' | 'conjunto',
+    person: 'conjunto' as 'person1' | 'person2' | 'conjunto' | 'vr',
     name: '',
     value: 0,
   })
@@ -62,6 +62,7 @@ export default function SalaryForm({ salary, onSubmit, onCancel }: SalaryFormPro
             <option value="conjunto">{getConfigValue('conjunto_label') || 'Salário Conjunto'}</option>
             <option value="person1">{getConfigValue('person1_name') || 'Pessoa 1'}</option>
             <option value="person2">{getConfigValue('person2_name') || 'Pessoa 2'}</option>
+            <option value="vr">{getConfigValue('vr_label') || 'Vale Refeição (VR)'}</option>
           </select>
         </div>
 

@@ -21,6 +21,7 @@ interface ChartData {
   pessoa1: number
   pessoa2: number
   conjunto: number
+  vr: number
 }
 
 export default function ProjectionChart({ salaries, expenses, installments }: ProjectionChartProps) {
@@ -32,6 +33,7 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
     const conjuntoSalaries = salaries.filter(s => s.person === 'conjunto')
     const person1Salaries = salaries.filter(s => s.person === 'person1')
     const person2Salaries = salaries.filter(s => s.person === 'person2')
+    const vrSalaries = salaries.filter(s => s.person === 'vr')
 
     const avgConjunto = conjuntoSalaries.length > 0
       ? conjuntoSalaries.reduce((sum, s) => sum + s.value, 0) / conjuntoSalaries.length
@@ -43,6 +45,10 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
 
     const avgPerson2 = person2Salaries.length > 0
       ? person2Salaries.reduce((sum, s) => sum + s.value, 0) / person2Salaries.length
+      : 0
+
+    const avgVR = vrSalaries.length > 0
+      ? vrSalaries.reduce((sum, s) => sum + s.value, 0) / vrSalaries.length
       : 0
 
     const recurringExpenses = expenses
@@ -57,7 +63,7 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
     for (let i = 0; i < 12; i++) {
       const monthDate = addMonths(today, i)
       const monthLabel = format(monthDate, 'MMM/yyyy', { locale: ptBR })
-      const totalIncome = avgConjunto + avgPerson1 + avgPerson2
+      const totalIncome = avgConjunto + avgPerson1 + avgPerson2 + avgVR
 
       const monthInstallments = parcelInstallments
         .filter(inst => {
@@ -77,6 +83,7 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
         pessoa1: avgPerson1,
         pessoa2: avgPerson2,
         conjunto: avgConjunto,
+        vr: avgVR,
       })
     }
 
@@ -175,6 +182,15 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
             dataKey="pessoa2"
             name={getConfigValue('person2_name') || 'Pessoa 2'}
             stroke="#a855f7"
+            strokeWidth={2}
+            dot={{ r: 3 }}
+            activeDot={{ r: 5 }}
+          />
+          <Line
+            type="monotone"
+            dataKey="vr"
+            name={getConfigValue('vr_label') || 'Vale Refeição (VR)'}
+            stroke="#f97316"
             strokeWidth={2}
             dot={{ r: 3 }}
             activeDot={{ r: 5 }}

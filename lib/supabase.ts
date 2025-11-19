@@ -18,7 +18,7 @@ export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey)
 
 export interface Salary {
   id?: string
-  person: 'person1' | 'person2' | 'conjunto'
+  person: 'person1' | 'person2' | 'conjunto' | 'vr'
   name: string
   value: number
   created_at?: string
@@ -31,6 +31,7 @@ export interface MonthlyProjection {
   person1: number
   person2: number
   conjunto: number
+  vr: number
 }
 
 export interface SiteConfig {
@@ -50,6 +51,7 @@ export interface Expense {
   category: string
   amount: number
   type: 'fixo' | 'parcelado'
+  paid_by?: 'person1' | 'person2' | 'vr' | 'conjunto'
   is_recurring: boolean
   total_installments?: number | null
   notes?: string | null

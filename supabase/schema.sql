@@ -1,7 +1,7 @@
 -- Criação da tabela de salários
 CREATE TABLE IF NOT EXISTS salaries (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  person VARCHAR(20) NOT NULL CHECK (person IN ('person1', 'person2', 'conjunto')),
+  person VARCHAR(20) NOT NULL CHECK (person IN ('person1', 'person2', 'conjunto', 'vr')),
   name VARCHAR(255) NOT NULL,
   value DECIMAL(10, 2) NOT NULL CHECK (value >= 0),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -68,6 +68,7 @@ INSERT INTO site_config (key, value, label, category, type) VALUES
   ('site_subtitle', 'Gestão de salários para duas pessoas', 'Subtítulo do Site', 'general', 'text'),
   ('person1_name', 'Pessoa 1', 'Nome da Pessoa 1', 'people', 'text'),
   ('person2_name', 'Pessoa 2', 'Nome da Pessoa 2', 'people', 'text'),
+  ('vr_label', 'Vale Refeição (VR)', 'Rótulo do Vale Refeição', 'people', 'text'),
   ('conjunto_label', 'Salário Conjunto', 'Rótulo do Salário Conjunto', 'people', 'text'),
   ('total_geral_label', 'Total Geral', 'Rótulo do Total Geral', 'labels', 'text'),
   ('total_conjunto_label', 'Salário Conjunto', 'Rótulo do Total Conjunto', 'labels', 'text'),
@@ -88,6 +89,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   category VARCHAR(100) NOT NULL DEFAULT 'geral',
   amount DECIMAL(10, 2) NOT NULL CHECK (amount >= 0),
   type VARCHAR(20) NOT NULL CHECK (type IN ('fixo', 'parcelado')),
+  paid_by VARCHAR(20) NOT NULL DEFAULT 'conjunto' CHECK (paid_by IN ('person1', 'person2', 'vr', 'conjunto')),
   is_recurring BOOLEAN NOT NULL DEFAULT false,
   total_installments INT,
   notes TEXT,
@@ -98,6 +100,7 @@ CREATE TABLE IF NOT EXISTS expenses (
 
 CREATE INDEX IF NOT EXISTS idx_expenses_type ON expenses(type);
 CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category);
+CREATE INDEX IF NOT EXISTS idx_expenses_paid_by ON expenses(paid_by);
 
 CREATE TRIGGER update_expenses_updated_at BEFORE UPDATE ON expenses
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
