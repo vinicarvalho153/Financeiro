@@ -17,6 +17,7 @@ interface ChartData {
   month: string
   total: number
   expenses: number
+  net: number
 }
 
 export default function ProjectionChart({ salaries, expenses, installments }: ProjectionChartProps) {
@@ -55,18 +56,22 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
       
       // Total de despesas do mês (fixas + parcelas)
       const expensesValue = recurringExpenses + monthInstallments
+      
+      // Saldo do mês (total - despesas)
+      const netValue = totalSalaries - expensesValue
 
       projection.push({
         month: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
         total: totalSalaries,
         expenses: expensesValue,
+        net: netValue,
       })
     }
 
     setChartData(projection)
   }, [salaries, expenses, installments])
 
-  const hasData = chartData.some(item => item.total > 0 || item.expenses > 0)
+  const hasData = chartData.some(item => item.total > 0 || item.expenses > 0 || item.net !== 0)
 
   if (!hasData) {
     return (
@@ -124,6 +129,16 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
             strokeWidth={3}
             dot={{ r: 4 }}
             activeDot={{ r: 6 }}
+          />
+          <Line
+            type="monotone"
+            dataKey="net"
+            name="Saldo"
+            stroke="#3b82f6"
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            dot={{ r: 3 }}
+            activeDot={{ r: 5 }}
           />
         </LineChart>
       </ResponsiveContainer>
