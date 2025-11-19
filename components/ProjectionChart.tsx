@@ -11,6 +11,7 @@ interface ProjectionChartProps {
   salaries: Salary[]
   expenses: Expense[]
   installments: Installment[]
+  filterByPerson?: 'person1' | 'person2' | 'total'
 }
 
 interface ChartData {
@@ -20,24 +21,48 @@ interface ChartData {
   net: number
 }
 
-export default function ProjectionChart({ salaries, expenses, installments }: ProjectionChartProps) {
+export default function ProjectionChart({ salaries, expenses, installments, filterByPerson = 'total' }: ProjectionChartProps) {
   const { getConfigValue } = useConfig()
   const [chartData, setChartData] = useState<ChartData[]>([])
 
   useEffect(() => {
-    // Somar todos os salários
-    const totalSalaries = salaries.reduce((sum, s) => sum + s.value, 0)
+    // Filtrar salários por pessoa ou somar todos
+    let filteredSalaries: Salary[]
+    if (filterByPerson === 'person1' || filterByPerson === 'person2') {
+      filteredSalaries = salaries.filter(s => s.person === filterByPerson)
+    } else {
+      filteredSalaries = salaries
+    }
+    const totalSalaries = filteredSalaries.reduce((sum, s) => sum + s.value, 0)
 
-    // Calcular despesas fixas
-    const recurringExpenses = expenses
+    // Calcular despesas fixas filtradas por pessoa
+    let filteredExpenses = expenses
+    if (filterByPerson === 'person1' || filterByPerson === 'person2') {
+      filteredExpenses = expenses.filter(expense => expense.paid_by === filterByPerson)
+    }
+    
+    const recurringExpenses = filteredExpenses
       .filter(expense => expense.type === 'fixo')
       .reduce((sum, expense) => sum + expense.amount, 0)
 
-    console.log('📊 Gráfico - Despesas fixas:', recurringExpenses, '| Total de expenses:', expenses.length)
+    console.log('📊 Gráfico - Despesas fixas:', recurringExpenses, '| Total de expenses:', filteredExpenses.length)
     console.log('📊 Gráfico - Parcelas:', installments.length, '| Pendentes:', installments.filter(inst => inst.status !== 'paid').length)
 
-    // Filtrar parcelas pendentes
-    const parcelInstallments = installments.filter(inst => inst.status !== 'paid')
+    // Filtrar parcelas pendentes e por pessoa (através da relação com expense)
+    let pendingInstallments = installments.filter(inst => inst.status !== 'paid')
+    
+    // Criar um mapa de expense_id -> expense para busca rápida
+    const expenseMap = new Map(expenses.map(e => [e.id, e]))
+    
+    let filteredInstallments = pendingInstallments
+    if (filterByPerson === 'person1' || filterByPerson === 'person2') {
+      // Filtrar parcelas que pertencem a despesas pagas pela pessoa
+      filteredInstallments = pendingInstallments.filter(inst => {
+        const expense = expenseMap.get(inst.expense_id)
+        return expense && expense.paid_by === filterByPerson
+      })
+    }
+    const parcelInstallments = filteredInstallments
 
     const projection: ChartData[] = []
     const today = new Date()
@@ -69,7 +94,7 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
     }
 
     setChartData(projection)
-  }, [salaries, expenses, installments])
+  }, [salaries, expenses, installments, filterByPerson])
 
   const hasData = chartData.some(item => item.total > 0 || item.expenses > 0 || item.net !== 0)
 

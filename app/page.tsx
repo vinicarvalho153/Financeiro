@@ -6,7 +6,7 @@ import { getSalaries, createSalary, updateSalary, deleteSalary } from '@/lib/dat
 import { getExpenses, createExpense, deleteExpense, ExpenseInput } from '@/lib/expenses'
 import SalaryForm from '@/components/SalaryForm'
 import SalaryList from '@/components/SalaryList'
-import ProjectionChart from '@/components/ProjectionChart'
+import ProjectionChartWithTabs from '@/components/ProjectionChartWithTabs'
 import ExpenseForm from '@/components/ExpenseForm'
 import ExpenseList from '@/components/ExpenseList'
 import ConfigEditor from '@/components/ConfigEditor'
@@ -312,7 +312,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Gráfico de Projeção */}
+        {/* Gráfico de Projeção com Abas */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="text-blue-600" size={24} />
@@ -320,7 +320,7 @@ export default function Home() {
               {getConfigValue('projection_title') || 'Projeção de Salários (Próximos 12 Meses)'}
             </h2>
           </div>
-          <ProjectionChart 
+          <ProjectionChartWithTabs 
             salaries={salaries} 
             expenses={expenses} 
             installments={installments}
