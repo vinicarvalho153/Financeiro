@@ -149,6 +149,11 @@ export default function Home() {
     setEditingExpense(null)
   }
 
+  const handleAddExpense = () => {
+    setEditingExpense(null)
+    setShowExpenseForm(true)
+  }
+
   const handleDeleteExpenseEntry = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir este gasto?')) {
       try {
@@ -383,10 +388,7 @@ export default function Home() {
             </div>
             {!showExpenseForm && (
               <button
-                onClick={() => {
-                  setEditingExpense(null)
-                  setShowExpenseForm(true)
-                }}
+                onClick={handleAddExpense}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-colors flex items-center gap-2"
               >
                 <Wallet size={20} />

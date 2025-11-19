@@ -54,6 +54,20 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
         due_date: expense.due_date ? expense.due_date.slice(0, 10) : '',
         notes: expense.notes || '',
       })
+    } else {
+      // Resetar formulário quando não há expense (criar novo)
+      setFormData({
+        type: 'fixo' as 'fixo' | 'parcelado' | 'unico',
+        name: '',
+        category: 'geral',
+        amount: 0,
+        paid_by: 'conjunto' as 'person1' | 'person2' | 'vr' | 'conjunto',
+        total_installments: 1,
+        paid_installments: 0,
+        first_due_date: '',
+        due_date: '',
+        notes: '',
+      })
     }
   }, [expense])
 
@@ -77,7 +91,7 @@ export default function ExpenseForm({ expense, onSubmit, onCancel }: ExpenseForm
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-bold text-gray-900">
-          {expense ? 'Editar Gasto' : 'Novo Gasto'}
+          {expense && expense.id ? 'Editar Gasto' : 'Novo Gasto'}
         </h3>
         <button onClick={onCancel} className="text-gray-500 hover:text-gray-700">
           <X size={24} />
