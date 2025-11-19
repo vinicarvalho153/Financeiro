@@ -1,0 +1,128 @@
+'use client'
+
+import { Expense, Installment } from '@/lib/supabase'
+import { updateInstallmentStatus } from '@/lib/expenses'
+import { Clock, CreditCard, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+
+interface ExpenseListProps {
+  expenses: Expense[]
+  onDelete: (id: string) => void
+  onRefresh: () => void
+}
+
+export default function ExpenseList({ expenses, onDelete, onRefresh }: ExpenseListProps) {
+  const [updating, setUpdating] = useState<string | null>(null)
+
+  if (expenses.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        Nenhum gasto cadastrado ainda. Clique em "Adicionar Gasto" para começar.
+      </div>
+    )
+  }
+
+  const handleInstallmentStatus = async (installment: Installment) => {
+    setUpdating(installment.id || null)
+    try {
+      await updateInstallmentStatus(installment.id!, installment.status === 'paid' ? 'pending' : 'paid')
+      await onRefresh()
+    } catch (error) {
+      console.error('Erro ao atualizar parcela:', error)
+      alert('Erro ao atualizar parcela. Verifique o console para mais detalhes.')
+    } finally {
+      setUpdating(null)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {expenses.map((expense) => (
+        <div key={expense.id} className="border rounded-lg shadow-sm overflow-hidden bg-white">
+          <div className="flex flex-col md:flex-row md:items-center justify-between p-4 border-b bg-gray-50">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-gray-900">{expense.name}</h3>
+                <span className="text-xs uppercase tracking-wide text-gray-500 bg-gray-200 px-2 py-0.5 rounded">
+                  {expense.category}
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                {expense.type === 'fixo' ? 'Gasto Fixo Mensal' : 'Gasto Parcelado'}
+              </p>
+              {expense.notes && (
+                <p className="text-sm text-gray-600 mt-2">{expense.notes}</p>
+              )}
+            </div>
+            <div className="mt-4 md:mt-0 flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-xs text-gray-500">
+                  {expense.type === 'fixo' ? 'Valor Mensal' : 'Valor Total'}
+                </p>
+                <p className="text-2xl font-bold text-gray-900">
+                  R$ {expense.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+              <button
+                onClick={() => expense.id && onDelete(expense.id)}
+                className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded transition-colors"
+                title="Excluir Gasto"
+              >
+                <Trash2 size={20} />
+              </button>
+            </div>
+          </div>
+
+          {expense.type === 'parcelado' && expense.installments && expense.installments.length > 0 && (
+            <div className="p-4 bg-gray-50">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <CreditCard size={16} />
+                Parcelas
+              </h4>
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                {expense.installments.map((installment) => (
+                  <div
+                    key={installment.id}
+                    className="flex items-center justify-between p-3 bg-white rounded border"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        Parcela {installment.installment_number}/{expense.total_installments}
+                      </p>
+                      <p className="text-sm text-gray-500 flex items-center gap-1">
+                        <Clock size={14} />
+                        Vencimento:{' '}
+                        {new Date(installment.due_date).toLocaleDateString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-semibold text-gray-900">
+                        R$ {installment.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                      <button
+                        onClick={() => handleInstallmentStatus(installment)}
+                        disabled={updating === installment.id}
+                        className={`mt-2 px-3 py-1 rounded-full text-xs font-semibold ${
+                          installment.status === 'paid'
+                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                            : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {installment.status === 'paid' ? 'Pago' : 'Pendente'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
