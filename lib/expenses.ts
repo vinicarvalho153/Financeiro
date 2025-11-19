@@ -9,6 +9,7 @@ export interface ExpenseInput {
   paid_by?: 'person1' | 'person2' | 'vr' | 'conjunto'
   notes?: string
   total_installments?: number
+  paid_installments?: number
   first_due_date?: string
 }
 
@@ -82,16 +83,21 @@ export async function createExpense(input: ExpenseInput): Promise<void> {
 
     const installments: Partial<Installment>[] = []
     const baseAmount = input.amount / input.total_installments
+    const paidCount = input.paid_installments || 0
+    const now = new Date()
 
     for (let i = 0; i < input.total_installments; i++) {
       const dueDate = addMonths(new Date(input.first_due_date), i)
       const roundedAmount = Number(baseAmount.toFixed(2))
+      const isPaid = i < paidCount
+      
       installments.push({
         expense_id: expense.id,
         installment_number: i + 1,
         amount: roundedAmount,
         due_date: dueDate.toISOString(),
-        status: 'pending',
+        status: isPaid ? 'paid' : 'pending',
+        paid_at: isPaid ? now.toISOString() : null,
       })
     }
 
