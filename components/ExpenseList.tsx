@@ -1,18 +1,19 @@
 'use client'
 
 import { Expense, Installment } from '@/lib/supabase'
-import { updateInstallmentStatus } from '@/lib/expenses'
+import { updateInstallmentStatus, payMonthInstallments, finishExpense } from '@/lib/expenses'
 import { useConfig } from '@/contexts/ConfigContext'
-import { Clock, CreditCard, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Clock, CreditCard, Trash2, ChevronDown, ChevronUp, Edit, CheckCircle, Calendar } from 'lucide-react'
 import { useState } from 'react'
 
 interface ExpenseListProps {
   expenses: Expense[]
   onDelete: (id: string) => void
+  onEdit: (expense: Expense) => void
   onRefresh: () => void
 }
 
-export default function ExpenseList({ expenses, onDelete, onRefresh }: ExpenseListProps) {
+export default function ExpenseList({ expenses, onDelete, onEdit, onRefresh }: ExpenseListProps) {
   const { getConfigValue } = useConfig()
   const [updating, setUpdating] = useState<string | null>(null)
   const [expandedExpenses, setExpandedExpenses] = useState<Set<string>>(new Set())
@@ -78,6 +79,69 @@ export default function ExpenseList({ expenses, onDelete, onRefresh }: ExpenseLi
     setExpandedExpenses(newExpanded)
   }
 
+  const handlePayMonth = async (expenseId: string) => {
+    if (!confirm('Deseja marcar todas as parcelas pendentes deste mês como pagas?')) {
+      return
+    }
+    
+    setUpdating(expenseId)
+    try {
+      await payMonthInstallments(expenseId)
+      await onRefresh()
+    } catch (error) {
+      console.error('Erro ao pagar parcelas do mês:', error)
+      alert('Erro ao pagar parcelas do mês. Verifique o console para mais detalhes.')
+    } finally {
+      setUpdating(null)
+    }
+  }
+
+  const handleFinish = async (expenseId: string) => {
+    if (!confirm('Deseja finalizar este gasto? Todas as parcelas pendentes serão marcadas como pagas.')) {
+      return
+    }
+    
+    setUpdating(expenseId)
+    try {
+      await finishExpense(expenseId)
+      await onRefresh()
+    } catch (error) {
+      console.error('Erro ao finalizar gasto:', error)
+      alert('Erro ao finalizar gasto. Verifique o console para mais detalhes.')
+    } finally {
+      setUpdating(null)
+    }
+  }
+
+  const getPendingInstallmentsCount = (expense: Expense): number => {
+    if (!expense.installments) return 0
+    return expense.installments.filter(inst => inst.status === 'pending').length
+  }
+
+  const getPaidInstallmentsCount = (expense: Expense): number => {
+    if (!expense.installments) return 0
+    return expense.installments.filter(inst => inst.status === 'paid').length
+  }
+
+  const isFinished = (expense: Expense): boolean => {
+    if (expense.type !== 'parcelado' || !expense.installments) return false
+    return getPendingInstallmentsCount(expense) === 0
+  }
+
+  const hasCurrentMonthInstallments = (expense: Expense): boolean => {
+    if (expense.type !== 'parcelado' || !expense.installments) return false
+    
+    const today = new Date()
+    const currentMonth = today.getMonth()
+    const currentYear = today.getFullYear()
+    
+    return expense.installments.some(inst => {
+      if (inst.status === 'paid') return false
+      const instDate = new Date(inst.due_date)
+      return instDate.getMonth() === currentMonth && instDate.getFullYear() === currentYear
+    })
+  }
+
   return (
     <div className="space-y-4">
       {expenses.map((expense) => (
@@ -131,13 +195,46 @@ export default function ExpenseList({ expenses, onDelete, onRefresh }: ExpenseLi
                   R$ {expense.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
               </div>
-              <button
-                onClick={() => expense.id && onDelete(expense.id)}
-                className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded transition-colors"
-                title="Excluir Gasto"
-              >
-                <Trash2 size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                {expense.type === 'parcelado' && expense.installments && expense.installments.length > 0 && (
+                  <>
+                    {hasCurrentMonthInstallments(expense) && (
+                      <button
+                        onClick={() => expense.id && handlePayMonth(expense.id)}
+                        disabled={updating === expense.id}
+                        className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Pagar Parcelas do Mês"
+                      >
+                        <Calendar size={20} />
+                      </button>
+                    )}
+                    {!isFinished(expense) && (
+                      <button
+                        onClick={() => expense.id && handleFinish(expense.id)}
+                        disabled={updating === expense.id}
+                        className="text-green-600 hover:text-green-800 p-2 hover:bg-green-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Finalizar (Pagar Todas as Parcelas Pendentes)"
+                      >
+                        <CheckCircle size={20} />
+                      </button>
+                    )}
+                  </>
+                )}
+                <button
+                  onClick={() => onEdit(expense)}
+                  className="text-indigo-600 hover:text-indigo-800 p-2 hover:bg-indigo-50 rounded transition-colors"
+                  title="Editar Gasto"
+                >
+                  <Edit size={20} />
+                </button>
+                <button
+                  onClick={() => expense.id && onDelete(expense.id)}
+                  className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded transition-colors"
+                  title="Excluir Gasto"
+                >
+                  <Trash2 size={20} />
+                </button>
+              </div>
             </div>
           </div>
 

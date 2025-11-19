@@ -132,6 +132,34 @@ export async function deleteExpense(id: string): Promise<void> {
   }
 }
 
+export async function updateExpense(id: string, input: Partial<ExpenseInput>): Promise<void> {
+  if (!isSupabaseConfigured) {
+    throw new Error('⚠️ Supabase não configurado. Configure o arquivo .env.local com suas credenciais do Supabase.')
+  }
+
+  const updateData: any = {}
+  if (input.name !== undefined) updateData.name = input.name
+  if (input.category !== undefined) updateData.category = input.category
+  if (input.amount !== undefined) updateData.amount = input.amount
+  if (input.type !== undefined) {
+    updateData.type = input.type
+    updateData.is_recurring = input.type === 'fixo'
+  }
+  if (input.paid_by !== undefined) updateData.paid_by = input.paid_by
+  if (input.notes !== undefined) updateData.notes = input.notes
+  if (input.due_date !== undefined) updateData.due_date = input.due_date
+
+  const { error } = await supabase
+    .from('expenses')
+    .update(updateData)
+    .eq('id', id)
+
+  if (error) {
+    console.error('Erro ao atualizar gasto:', error)
+    throw error
+  }
+}
+
 export async function updateInstallmentStatus(installmentId: string, status: 'pending' | 'paid'): Promise<void> {
   if (!isSupabaseConfigured) {
     throw new Error('⚠️ Supabase não configurado. Configure o arquivo .env.local com suas credenciais do Supabase.')
@@ -147,6 +175,79 @@ export async function updateInstallmentStatus(installmentId: string, status: 'pe
 
   if (error) {
     console.error('Erro ao atualizar parcela:', error)
+    throw error
+  }
+}
+
+export async function payMonthInstallments(expenseId: string): Promise<void> {
+  if (!isSupabaseConfigured) {
+    throw new Error('⚠️ Supabase não configurado. Configure o arquivo .env.local com suas credenciais do Supabase.')
+  }
+
+  // Primeiro, buscar todas as parcelas pendentes do gasto
+  const { data: installments, error: fetchError } = await supabase
+    .from('installments')
+    .select('*')
+    .eq('expense_id', expenseId)
+    .eq('status', 'pending')
+
+  if (fetchError) {
+    console.error('Erro ao buscar parcelas:', fetchError)
+    throw fetchError
+  }
+
+  if (!installments || installments.length === 0) {
+    return
+  }
+
+  const today = new Date()
+  const currentMonth = today.getMonth()
+  const currentYear = today.getFullYear()
+  const startOfMonth = new Date(currentYear, currentMonth, 1)
+  const startOfNextMonth = new Date(currentYear, currentMonth + 1, 1)
+
+  // Filtrar parcelas do mês atual
+  const monthInstallments = installments.filter(inst => {
+    const dueDate = new Date(inst.due_date)
+    return dueDate >= startOfMonth && dueDate < startOfNextMonth
+  })
+
+  if (monthInstallments.length === 0) {
+    return
+  }
+
+  // Atualizar todas as parcelas do mês
+  const installmentIds = monthInstallments.map(inst => inst.id)
+  const { error } = await supabase
+    .from('installments')
+    .update({
+      status: 'paid',
+      paid_at: new Date().toISOString(),
+    })
+    .in('id', installmentIds)
+
+  if (error) {
+    console.error('Erro ao pagar parcelas do mês:', error)
+    throw error
+  }
+}
+
+export async function finishExpense(expenseId: string): Promise<void> {
+  if (!isSupabaseConfigured) {
+    throw new Error('⚠️ Supabase não configurado. Configure o arquivo .env.local com suas credenciais do Supabase.')
+  }
+
+  const { error } = await supabase
+    .from('installments')
+    .update({
+      status: 'paid',
+      paid_at: new Date().toISOString(),
+    })
+    .eq('expense_id', expenseId)
+    .eq('status', 'pending')
+
+  if (error) {
+    console.error('Erro ao finalizar gasto:', error)
     throw error
   }
 }

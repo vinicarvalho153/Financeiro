@@ -8,7 +8,7 @@ import SalaryForm from '@/components/SalaryForm'
 import SalaryList from '@/components/SalaryList'
 import ProjectionChartWithTabs from '@/components/ProjectionChartWithTabs'
 import ExpenseForm from '@/components/ExpenseForm'
-import ExpenseList from '@/components/ExpenseList'
+import ExpenseListWithTabs from '@/components/ExpenseListWithTabs'
 import ConfigEditor from '@/components/ConfigEditor'
 import { useConfig } from '@/contexts/ConfigContext'
 import { Plus, TrendingUp, AlertCircle, Settings, Wallet, DollarSign } from 'lucide-react'
@@ -24,6 +24,7 @@ export default function Home() {
   const [installments, setInstallments] = useState<Installment[]>([])
   const [loadingExpenses, setLoadingExpenses] = useState(true)
   const [showExpenseForm, setShowExpenseForm] = useState(false)
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [monthlyProjections, setMonthlyProjections] = useState<{ [key: string]: { conjunto: number; expenses: number } }>({})
   const [editingProjection, setEditingProjection] = useState<{ year: number; month: number } | null>(null)
   const [showProjectionSelector, setShowProjectionSelector] = useState(false)
@@ -118,18 +119,34 @@ export default function Home() {
 
   const handleCreateExpenseEntry = async (expenseData: ExpenseInput) => {
     try {
-      await createExpense(expenseData)
+      if (editingExpense && editingExpense.id) {
+        const { updateExpense } = await import('@/lib/expenses')
+        await updateExpense(editingExpense.id, expenseData)
+      } else {
+        await createExpense(expenseData)
+      }
       await loadExpenses()
       setShowExpenseForm(false)
+      setEditingExpense(null)
     } catch (error: any) {
-      console.error('Erro ao criar gasto:', error)
+      console.error('Erro ao salvar gasto:', error)
       const errorMessage = error?.message || 'Erro desconhecido'
       if (errorMessage.includes('CHECK constraint') || errorMessage.includes('paid_by')) {
         alert('⚠️ Erro: O banco de dados precisa ser atualizado.\n\nExecute o arquivo supabase/fix_database.sql no SQL Editor do Supabase para corrigir isso.')
       } else {
-        alert(`Erro ao criar gasto: ${errorMessage}\n\nVerifique o console para mais detalhes.`)
+        alert(`Erro ao salvar gasto: ${errorMessage}\n\nVerifique o console para mais detalhes.`)
       }
     }
+  }
+
+  const handleEditExpense = (expense: Expense) => {
+    setEditingExpense(expense)
+    setShowExpenseForm(true)
+  }
+
+  const handleCancelExpenseForm = () => {
+    setShowExpenseForm(false)
+    setEditingExpense(null)
   }
 
   const handleDeleteExpenseEntry = async (id: string) => {
@@ -366,7 +383,10 @@ export default function Home() {
             </div>
             {!showExpenseForm && (
               <button
-                onClick={() => setShowExpenseForm(true)}
+                onClick={() => {
+                  setEditingExpense(null)
+                  setShowExpenseForm(true)
+                }}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-colors flex items-center gap-2"
               >
                 <Wallet size={20} />
@@ -404,3 +424,4 @@ export default function Home() {
     </main>
   )
 }
+
