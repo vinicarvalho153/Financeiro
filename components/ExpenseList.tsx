@@ -113,6 +113,22 @@ export default function ExpenseList({ expenses, onDelete, onEdit, onRefresh }: E
     }
   }
 
+  const handleFinalizeAndRemove = async (expenseId: string) => {
+    if (!confirm('Todas as parcelas já foram pagas. Deseja finalizar e remover este gasto parcelado da lista?')) {
+      return
+    }
+    
+    setUpdating(expenseId)
+    try {
+      await onDelete(expenseId)
+    } catch (error) {
+      console.error('Erro ao remover gasto:', error)
+      alert('Erro ao remover gasto. Verifique o console para mais detalhes.')
+    } finally {
+      setUpdating(null)
+    }
+  }
+
   const getPendingInstallmentsCount = (expense: Expense): number => {
     if (!expense.installments) return 0
     return expense.installments.filter(inst => inst.status === 'pending').length
@@ -160,6 +176,20 @@ export default function ExpenseList({ expenses, onDelete, onEdit, onRefresh }: E
                 <span className="text-xs uppercase tracking-wide text-gray-500 bg-gray-200 px-2 py-0.5 rounded">
                   {expense.category}
                 </span>
+                {expense.type === 'parcelado' && 
+                 expense.installments && 
+                 expense.installments.length > 0 && 
+                 isFinished(expense) && (
+                  <button
+                    onClick={() => expense.id && handleFinalizeAndRemove(expense.id)}
+                    disabled={updating === expense.id}
+                    className="text-xs px-2 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded-full font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    title="Finalizar e Remover Gasto Parcelado"
+                  >
+                    <CheckCircle size={12} />
+                    Finalizar
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <p className="text-sm text-gray-500">
@@ -238,7 +268,10 @@ export default function ExpenseList({ expenses, onDelete, onEdit, onRefresh }: E
             </div>
           </div>
 
-          {expense.type === 'parcelado' && expense.installments && expense.installments.length > 0 && (
+          {expense.type === 'parcelado' && 
+           expense.installments && 
+           expense.installments.length > 0 && 
+           !isFinished(expense) && (
             <div className="border-t">
               <button
                 onClick={() => expense.id && toggleExpense(expense.id)}
