@@ -17,6 +17,7 @@ interface ExpenseFormProps {
     paid_by?: 'person1' | 'person2' | 'vr' | 'conjunto'
     notes?: string
     total_installments?: number
+    paid_installments?: number
     first_due_date?: string
   }) => void | Promise<void>
   onCancel: () => void
