@@ -11,7 +11,7 @@ interface ProjectionChartProps {
   salaries: Salary[]
   expenses: Expense[]
   installments: Installment[]
-  filterByPerson?: 'person1' | 'person2' | 'total'
+  filterByPerson?: 'person1' | 'person2' | 'vr' | 'total'
 }
 
 interface ChartData {
@@ -28,7 +28,7 @@ export default function ProjectionChart({ salaries, expenses, installments, filt
   useEffect(() => {
     // Filtrar salários por pessoa ou somar todos
     let filteredSalaries: Salary[]
-    if (filterByPerson === 'person1' || filterByPerson === 'person2') {
+    if (filterByPerson === 'person1' || filterByPerson === 'person2' || filterByPerson === 'vr') {
       filteredSalaries = salaries.filter(s => s.person === filterByPerson)
     } else {
       filteredSalaries = salaries
@@ -37,7 +37,7 @@ export default function ProjectionChart({ salaries, expenses, installments, filt
 
     // Calcular despesas fixas filtradas por pessoa
     let filteredExpenses = expenses
-    if (filterByPerson === 'person1' || filterByPerson === 'person2') {
+    if (filterByPerson === 'person1' || filterByPerson === 'person2' || filterByPerson === 'vr') {
       filteredExpenses = expenses.filter(expense => expense.paid_by === filterByPerson)
     }
     
@@ -59,7 +59,7 @@ export default function ProjectionChart({ salaries, expenses, installments, filt
     const expenseMap = new Map(expenses.map(e => [e.id, e]))
     
     let filteredInstallments = pendingInstallments
-    if (filterByPerson === 'person1' || filterByPerson === 'person2') {
+    if (filterByPerson === 'person1' || filterByPerson === 'person2' || filterByPerson === 'vr') {
       // Filtrar parcelas que pertencem a despesas pagas pela pessoa
       filteredInstallments = pendingInstallments.filter(inst => {
         const expense = expenseMap.get(inst.expense_id)

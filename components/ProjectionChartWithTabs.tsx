@@ -11,7 +11,7 @@ interface ProjectionChartWithTabsProps {
   installments: Installment[]
 }
 
-type TabType = 'total' | 'person1' | 'person2'
+type TabType = 'total' | 'person1' | 'person2' | 'vr'
 
 export default function ProjectionChartWithTabs({ salaries, expenses, installments }: ProjectionChartWithTabsProps) {
   const { getConfigValue } = useConfig()
@@ -21,6 +21,7 @@ export default function ProjectionChartWithTabs({ salaries, expenses, installmen
     { id: 'total' as TabType, label: 'Total Geral' },
     { id: 'person1' as TabType, label: getConfigValue('person1_name') || 'Pessoa 1' },
     { id: 'person2' as TabType, label: getConfigValue('person2_name') || 'Pessoa 2' },
+    { id: 'vr' as TabType, label: getConfigValue('vr_label') || 'Vale Refeição (VR)' },
   ]
 
   return (
