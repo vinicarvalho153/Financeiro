@@ -409,9 +409,10 @@ export default function Home() {
             {loadingExpenses ? (
               <div className="text-center py-8 text-gray-500">Carregando...</div>
             ) : (
-              <ExpenseList
+              <ExpenseListWithTabs
                 expenses={expenses}
                 onDelete={handleDeleteExpenseEntry}
+                onEdit={handleEditExpense}
                 onRefresh={loadExpenses}
               />
             )}
