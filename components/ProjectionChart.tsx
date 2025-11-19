@@ -15,13 +15,8 @@ interface ProjectionChartProps {
 
 interface ChartData {
   month: string
-  total: number
-  expenses: number
-  net: number
-  pessoa1: number
-  pessoa2: number
   conjunto: number
-  vr: number
+  expenses: number
 }
 
 export default function ProjectionChart({ salaries, expenses, installments }: ProjectionChartProps) {
@@ -29,32 +24,19 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
   const [chartData, setChartData] = useState<ChartData[]>([])
 
   useEffect(() => {
-    // Calcular valores médios por tipo
+    // Calcular valor médio apenas de salários conjuntos
     const conjuntoSalaries = salaries.filter(s => s.person === 'conjunto')
-    const person1Salaries = salaries.filter(s => s.person === 'person1')
-    const person2Salaries = salaries.filter(s => s.person === 'person2')
-    const vrSalaries = salaries.filter(s => s.person === 'vr')
 
     const avgConjunto = conjuntoSalaries.length > 0
       ? conjuntoSalaries.reduce((sum, s) => sum + s.value, 0) / conjuntoSalaries.length
       : 0
 
-    const avgPerson1 = person1Salaries.length > 0
-      ? person1Salaries.reduce((sum, s) => sum + s.value, 0) / person1Salaries.length
-      : 0
-
-    const avgPerson2 = person2Salaries.length > 0
-      ? person2Salaries.reduce((sum, s) => sum + s.value, 0) / person2Salaries.length
-      : 0
-
-    const avgVR = vrSalaries.length > 0
-      ? vrSalaries.reduce((sum, s) => sum + s.value, 0) / vrSalaries.length
-      : 0
-
+    // Calcular despesas fixas
     const recurringExpenses = expenses
       .filter(expense => expense.type === 'fixo')
       .reduce((sum, expense) => sum + expense.amount, 0)
 
+    // Filtrar parcelas pendentes
     const parcelInstallments = installments.filter(inst => inst.status !== 'paid')
 
     const projection: ChartData[] = []
@@ -63,8 +45,8 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
     for (let i = 0; i < 12; i++) {
       const monthDate = addMonths(today, i)
       const monthLabel = format(monthDate, 'MMM/yyyy', { locale: ptBR })
-      const totalIncome = avgConjunto + avgPerson1 + avgPerson2 + avgVR
 
+      // Calcular parcelas deste mês
       const monthInstallments = parcelInstallments
         .filter(inst => {
           const instDate = new Date(inst.due_date)
@@ -72,25 +54,20 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
         })
         .reduce((sum, inst) => sum + inst.amount, 0)
 
+      // Total de despesas do mês (fixas + parcelas)
       const totalExpenses = recurringExpenses + monthInstallments
-      const net = totalIncome - totalExpenses
 
       projection.push({
         month: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
-        total: totalIncome,
-        expenses: totalExpenses,
-        net,
-        pessoa1: avgPerson1,
-        pessoa2: avgPerson2,
         conjunto: avgConjunto,
-        vr: avgVR,
+        expenses: totalExpenses,
       })
     }
 
     setChartData(projection)
   }, [salaries, expenses, installments])
 
-  const hasData = chartData.some(item => item.total > 0 || item.expenses > 0)
+  const hasData = chartData.some(item => item.conjunto > 0 || item.expenses > 0)
 
   if (!hasData) {
     return (
@@ -133,9 +110,9 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
           />
           <Line
             type="monotone"
-            dataKey="total"
-            name={getConfigValue('total_geral_label') || 'Total Receitas'}
-            stroke="#1f2937"
+            dataKey="conjunto"
+            name={getConfigValue('conjunto_label') || 'Salário Conjunto'}
+            stroke="#10b981"
             strokeWidth={3}
             dot={{ r: 4 }}
             activeDot={{ r: 6 }}
@@ -145,55 +122,9 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
             dataKey="expenses"
             name="Despesas"
             stroke="#ef4444"
-            strokeWidth={2}
-            dot={{ r: 3 }}
-            activeDot={{ r: 5 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="net"
-            name="Saldo"
-            stroke="#10b981"
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            dot={{ r: 0 }}
-            activeDot={{ r: 4 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="conjunto"
-            name={getConfigValue('conjunto_label') || 'Salário Conjunto'}
-            stroke="#10b981"
-            strokeWidth={2}
-            dot={{ r: 3 }}
-            activeDot={{ r: 5 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="pessoa1"
-            name={getConfigValue('person1_name') || 'Pessoa 1'}
-            stroke="#3b82f6"
-            strokeWidth={2}
-            dot={{ r: 3 }}
-            activeDot={{ r: 5 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="pessoa2"
-            name={getConfigValue('person2_name') || 'Pessoa 2'}
-            stroke="#a855f7"
-            strokeWidth={2}
-            dot={{ r: 3 }}
-            activeDot={{ r: 5 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="vr"
-            name={getConfigValue('vr_label') || 'Vale Refeição (VR)'}
-            stroke="#f97316"
-            strokeWidth={2}
-            dot={{ r: 3 }}
-            activeDot={{ r: 5 }}
+            strokeWidth={3}
+            dot={{ r: 4 }}
+            activeDot={{ r: 6 }}
           />
         </LineChart>
       </ResponsiveContainer>
