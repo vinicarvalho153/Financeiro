@@ -24,11 +24,8 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
   const [chartData, setChartData] = useState<ChartData[]>([])
 
   useEffect(() => {
-    // Calcular valor médio total de todos os salários
-    const allSalaries = salaries
-    const avgTotal = allSalaries.length > 0
-      ? allSalaries.reduce((sum, s) => sum + s.value, 0) / allSalaries.length
-      : 0
+    // Somar todos os salários
+    const totalSalaries = salaries.reduce((sum, s) => sum + s.value, 0)
 
     // Calcular despesas fixas
     const recurringExpenses = expenses
@@ -58,7 +55,7 @@ export default function ProjectionChart({ salaries, expenses, installments }: Pr
 
       projection.push({
         month: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
-        total: avgTotal,
+        total: totalSalaries,
         expenses: expensesValue,
       })
     }
