@@ -400,8 +400,9 @@ export default function Home() {
           {showExpenseForm && (
             <div className="mb-8">
               <ExpenseForm
+                expense={editingExpense}
                 onSubmit={handleCreateExpenseEntry}
-                onCancel={() => setShowExpenseForm(false)}
+                onCancel={handleCancelExpenseForm}
               />
             </div>
           )}
