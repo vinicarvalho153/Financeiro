@@ -114,7 +114,20 @@ export default function ExpenseList({ expenses, onDelete, onEdit, onRefresh }: E
   }
 
   const handleFinalizeAndRemove = async (expenseId: string) => {
-    if (!confirm('Todas as parcelas já foram pagas. Deseja finalizar e remover este gasto parcelado da lista?')) {
+    const expense = expenses.find(e => e.id === expenseId)
+    const isParcelled = expense?.type === 'parcelado'
+    const isUnique = expense?.type === 'unico'
+    
+    let confirmMessage = ''
+    if (isParcelled) {
+      confirmMessage = 'Todas as parcelas já foram pagas. Deseja finalizar e remover este gasto parcelado da lista?'
+    } else if (isUnique) {
+      confirmMessage = 'Deseja finalizar e remover este gasto único da lista?'
+    } else {
+      return
+    }
+    
+    if (!confirm(confirmMessage)) {
       return
     }
     
@@ -176,15 +189,16 @@ export default function ExpenseList({ expenses, onDelete, onEdit, onRefresh }: E
                 <span className="text-xs uppercase tracking-wide text-gray-500 bg-gray-200 px-2 py-0.5 rounded">
                   {expense.category}
                 </span>
-                {expense.type === 'parcelado' && 
-                 expense.installments && 
-                 expense.installments.length > 0 && 
-                 isFinished(expense) && (
+                {((expense.type === 'parcelado' && 
+                   expense.installments && 
+                   expense.installments.length > 0 && 
+                   isFinished(expense)) ||
+                  expense.type === 'unico') && (
                   <button
                     onClick={() => expense.id && handleFinalizeAndRemove(expense.id)}
                     disabled={updating === expense.id}
                     className="text-xs px-2 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded-full font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                    title="Finalizar e Remover Gasto Parcelado"
+                    title={expense.type === 'unico' ? 'Finalizar e Remover Gasto Único' : 'Finalizar e Remover Gasto Parcelado'}
                   >
                     <CheckCircle size={12} />
                     Finalizar
@@ -270,8 +284,7 @@ export default function ExpenseList({ expenses, onDelete, onEdit, onRefresh }: E
 
           {expense.type === 'parcelado' && 
            expense.installments && 
-           expense.installments.length > 0 && 
-           !isFinished(expense) && (
+           expense.installments.length > 0 && (
             <div className="border-t">
               <button
                 onClick={() => expense.id && toggleExpense(expense.id)}
