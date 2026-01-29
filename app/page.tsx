@@ -458,28 +458,62 @@ export default function Home() {
     const monthStart = startOfMonth(new Date(selectedYear, selectedMonth))
     const monthEnd = endOfMonth(new Date(selectedYear, selectedMonth))
     
+    // Despesas fixas (sempre contam, independente do mês)
     const fixedExpenses = expenses
       .filter(e => e.type === 'fixo')
       .reduce((sum, e) => sum + e.amount, 0)
     
+    // Parcelas do mês selecionado (apenas pendentes)
     const monthInstallments = installments
       .filter(inst => {
         if (inst.status === 'paid') return false
         const dueDate = new Date(inst.due_date)
-        return dueDate >= monthStart && dueDate <= monthEnd
+        // Comparar apenas ano e mês, ignorando hora
+        const dueYear = dueDate.getFullYear()
+        const dueMonth = dueDate.getMonth()
+        return dueYear === selectedYear && dueMonth === selectedMonth
       })
       .reduce((sum, inst) => sum + inst.amount, 0)
     
+    // Gastos únicos do mês selecionado
     const monthUniqueExpenses = expenses
       .filter(e => {
         if (e.type !== 'unico' || !e.due_date) return false
         const dueDate = new Date(e.due_date)
-        return dueDate >= monthStart && dueDate <= monthEnd
+        // Comparar apenas ano e mês, ignorando hora
+        const dueYear = dueDate.getFullYear()
+        const dueMonth = dueDate.getMonth()
+        return dueYear === selectedYear && dueMonth === selectedMonth
       })
       .reduce((sum, e) => sum + e.amount, 0)
     
     const totalExpenses = fixedExpenses + monthInstallments + monthUniqueExpenses
     const balance = totalIncome - totalExpenses
+    
+    // Logs de debug
+    console.log('📊 Cálculo do mês:', new Date(selectedYear, selectedMonth).toLocaleString('pt-BR', { month: 'long', year: 'numeric' }))
+    console.log('📊 Despesas fixas:', fixedExpenses)
+    console.log('📊 Parcelas do mês:', monthInstallments)
+    console.log('📊 Gastos únicos do mês:', monthUniqueExpenses)
+    console.log('📊 Total de despesas:', totalExpenses)
+    console.log('📊 Detalhes das parcelas:', installments.filter(inst => {
+      if (inst.status === 'paid') return false
+      const dueDate = new Date(inst.due_date)
+      return dueDate.getFullYear() === selectedYear && dueDate.getMonth() === selectedMonth
+    }).map(inst => ({
+      nome: expenses.find(e => e.installments?.some(i => i.id === inst.id))?.name || 'N/A',
+      valor: inst.amount,
+      data: inst.due_date
+    })))
+    console.log('📊 Detalhes dos gastos únicos:', expenses.filter(e => {
+      if (e.type !== 'unico' || !e.due_date) return false
+      const dueDate = new Date(e.due_date)
+      return dueDate.getFullYear() === selectedYear && dueDate.getMonth() === selectedMonth
+    }).map(e => ({
+      nome: e.name,
+      valor: e.amount,
+      data: e.due_date
+    })))
     
     return { totalIncome, totalExpenses, balance }
   }
@@ -633,6 +667,9 @@ export default function Home() {
               R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
             <p className="text-xs text-gray-500 mt-1">{monthLabel}</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Verifique o console (F12) para detalhes
+            </p>
           </Card>
 
           <Card>
@@ -855,7 +892,11 @@ function ProjectionChart({
       const monthInstallments = pendingInstallments
         .filter(inst => {
           const instDate = new Date(inst.due_date)
-          return instDate.getMonth() === monthDate.getMonth() && instDate.getFullYear() === monthDate.getFullYear()
+          const instYear = instDate.getFullYear()
+          const instMonth = instDate.getMonth()
+          const monthYear = monthDate.getFullYear()
+          const monthMonth = monthDate.getMonth()
+          return instYear === monthYear && instMonth === monthMonth
         })
         .reduce((sum, inst) => sum + inst.amount, 0)
 
@@ -863,7 +904,11 @@ function ProjectionChart({
         .filter(e => {
           if (e.type !== 'unico' || !e.due_date) return false
           const expenseDate = new Date(e.due_date)
-          return expenseDate.getMonth() === monthDate.getMonth() && expenseDate.getFullYear() === monthDate.getFullYear()
+          const expenseYear = expenseDate.getFullYear()
+          const expenseMonth = expenseDate.getMonth()
+          const monthYear = monthDate.getFullYear()
+          const monthMonth = monthDate.getMonth()
+          return expenseYear === monthYear && expenseMonth === monthMonth
         })
         .reduce((sum, e) => sum + e.amount, 0)
 
