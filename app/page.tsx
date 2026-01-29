@@ -177,7 +177,8 @@ function ExpenseFormSimple({
   })
 
   useEffect(() => {
-    if (expense) {
+    if (expense && expense.id) {
+      console.log('Carregando dados da despesa no formulário:', expense)
       const paidCount = expense.installments?.filter(inst => inst.status === 'paid').length || 0
       setFormData({
         type: expense.type,
@@ -190,6 +191,20 @@ function ExpenseFormSimple({
         first_due_date: expense.start_date ? expense.start_date.slice(0, 10) : '',
         due_date: expense.due_date ? expense.due_date.slice(0, 10) : '',
         notes: expense.notes || ''
+      })
+    } else {
+      // Resetar formulário quando não há expense (criar novo)
+      setFormData({
+        type: 'fixo' as 'fixo' | 'parcelado' | 'unico',
+        name: '',
+        category: '',
+        amount: 0,
+        paid_by: 'conjunto' as 'person1' | 'person2' | 'vr' | 'conjunto',
+        total_installments: 1,
+        paid_installments: 0,
+        first_due_date: '',
+        due_date: '',
+        notes: ''
       })
     }
   }, [expense])
@@ -753,6 +768,7 @@ export default function Home() {
                       <div className="flex gap-1">
                         <Button
                           onClick={() => {
+                            console.log('Editando despesa:', expense)
                             setEditingExpense(expense)
                             setShowExpenseForm(true)
                           }}
@@ -871,29 +887,21 @@ function ProjectionChart({
   }
 
   const today = new Date()
-  const maxExpense = Math.max(...chartData.map(d => d.expenses), 1)
-  const maxIncome = Math.max(...chartData.map(d => d.income), 1)
 
   return (
-    <div className="space-y-2">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {chartData.map((data, idx) => {
         const isCurrentMonth = data.date.getMonth() === today.getMonth() && data.date.getFullYear() === today.getFullYear()
-        const isExpanded = expandedMonth === idx
         
         return (
-          <div 
-            key={idx} 
-            className={`border rounded-lg transition-all ${
+          <div key={idx} className="space-y-3">
+            {/* Card do Mês */}
+            <div className={`border rounded-lg p-4 ${
               isCurrentMonth 
                 ? 'border-gray-900 bg-gray-50' 
                 : 'border-gray-200 bg-white'
-            }`}
-          >
-            <div 
-              className="flex items-center gap-4 p-4 cursor-pointer hover:bg-gray-50"
-              onClick={() => setExpandedMonth(isExpanded ? null : idx)}
-            >
-              <div className="w-28">
+            }`}>
+              <div className="mb-3">
                 <div className={`text-sm font-semibold ${isCurrentMonth ? 'text-gray-900' : 'text-gray-700'}`}>
                   {data.month}
                 </div>
@@ -901,97 +909,42 @@ function ProjectionChart({
                   <div className="text-xs text-gray-500 mt-0.5">Mês Atual</div>
                 )}
               </div>
-              
-              <div className="flex-1 space-y-2">
-                {/* Barra de Receitas */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-gray-600">Receitas</span>
-                    <span className="text-sm font-semibold text-gray-900">
-                      R$ {data.income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-green-500 transition-all"
-                      style={{ width: `${(data.income / maxIncome) * 100}%` }}
-                    />
-                  </div>
-                </div>
 
-                {/* Barra de Despesas */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-gray-600">Despesas</span>
-                    <span className="text-sm font-semibold text-red-600">
-                      R$ {data.expenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-red-500 transition-all"
-                      style={{ width: `${(data.expenses / maxExpense) * 100}%` }}
-                    />
-                  </div>
+              {/* KPI Receitas - Verde */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-green-700 font-medium">Receitas</span>
+                  <ArrowUp size={16} className="text-green-600" />
                 </div>
+                <p className="text-xl font-bold text-green-700">
+                  R$ {data.income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
               </div>
 
-              <div className="w-32 text-right">
-                <div className="text-xs text-gray-600 mb-1">Saldo</div>
-                <div className={`text-lg font-bold ${data.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  R$ {data.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              {/* KPI Despesas - Vermelho */}
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-red-700 font-medium">Despesas</span>
+                  <ArrowDown size={16} className="text-red-600" />
                 </div>
-                <div className={`text-xs mt-1 ${data.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <p className="text-xl font-bold text-red-700">
+                  R$ {data.expenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+
+              {/* Saldo */}
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-600">Saldo</span>
+                  <div className={`text-lg font-bold ${data.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    R$ {data.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+                <div className={`text-xs mt-1 text-right ${data.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {data.balance >= 0 ? '✓ Positivo' : '⚠ Negativo'}
                 </div>
               </div>
             </div>
-
-            {/* Detalhes Expandidos */}
-            {isExpanded && (
-              <div className="border-t border-gray-200 p-4 bg-gray-50">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Receitas Fixas</p>
-                    <p className="font-semibold text-gray-900">
-                      R$ {data.income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Despesas Fixas</p>
-                    <p className="font-semibold text-red-600">
-                      R$ {expenses.filter(e => e.type === 'fixo').reduce((sum, e) => sum + e.amount, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Parcelas do Mês</p>
-                    <p className="font-semibold text-orange-600">
-                      R$ {installments
-                        .filter(inst => {
-                          if (inst.status === 'paid') return false
-                          const instDate = new Date(inst.due_date)
-                          return instDate.getMonth() === data.date.getMonth() && instDate.getFullYear() === data.date.getFullYear()
-                        })
-                        .reduce((sum, inst) => sum + inst.amount, 0)
-                        .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1">Gastos Únicos</p>
-                    <p className="font-semibold text-purple-600">
-                      R$ {expenses
-                        .filter(e => {
-                          if (e.type !== 'unico' || !e.due_date) return false
-                          const expenseDate = new Date(e.due_date)
-                          return expenseDate.getMonth() === data.date.getMonth() && expenseDate.getFullYear() === data.date.getFullYear()
-                        })
-                        .reduce((sum, e) => sum + e.amount, 0)
-                        .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )
       })}
