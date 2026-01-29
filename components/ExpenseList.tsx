@@ -153,7 +153,7 @@ export default function ExpenseList({ expenses, onDelete, onEdit, onRefresh }: E
   }
 
   const isFinished = (expense: Expense): boolean => {
-    if (expense.type !== 'parcelado' || !expense.installments) return false
+    if (expense.type !== 'parcelado' || !expense.installments || expense.installments.length === 0) return false
     return getPendingInstallmentsCount(expense) === 0
   }
 
@@ -173,7 +173,20 @@ export default function ExpenseList({ expenses, onDelete, onEdit, onRefresh }: E
 
   return (
     <div className="space-y-4">
-      {expenses.map((expense) => (
+      {expenses.map((expense) => {
+        const shouldShowFinalizeButton = 
+          expense.type === 'unico' || 
+          (expense.type === 'parcelado' && 
+           expense.installments && 
+           expense.installments.length > 0 && 
+           isFinished(expense))
+        
+        const shouldShowInstallmentsSection = 
+          expense.type === 'parcelado' && 
+          expense.installments && 
+          expense.installments.length > 0
+
+        return (
         <div key={expense.id} className="border rounded-lg shadow-sm overflow-hidden bg-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between p-4 border-b bg-gray-50">
             <div>
@@ -189,11 +202,7 @@ export default function ExpenseList({ expenses, onDelete, onEdit, onRefresh }: E
                 <span className="text-xs uppercase tracking-wide text-gray-500 bg-gray-200 px-2 py-0.5 rounded">
                   {expense.category}
                 </span>
-                {((expense.type === 'parcelado' && 
-                   expense.installments && 
-                   expense.installments.length > 0 && 
-                   isFinished(expense)) ||
-                  expense.type === 'unico') && (
+                {shouldShowFinalizeButton && (
                   <button
                     onClick={() => expense.id && handleFinalizeAndRemove(expense.id)}
                     disabled={updating === expense.id}
@@ -282,9 +291,7 @@ export default function ExpenseList({ expenses, onDelete, onEdit, onRefresh }: E
             </div>
           </div>
 
-          {expense.type === 'parcelado' && 
-           expense.installments && 
-           expense.installments.length > 0 && (
+          {shouldShowInstallmentsSection && (
             <div className="border-t">
               <button
                 onClick={() => expense.id && toggleExpense(expense.id)}
@@ -292,7 +299,7 @@ export default function ExpenseList({ expenses, onDelete, onEdit, onRefresh }: E
               >
                 <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                   <CreditCard size={16} />
-                  Parcelas ({expense.installments.filter(inst => inst.status === 'paid').length}/{expense.installments.length} pagas)
+                  Parcelas ({expense.installments!.filter(inst => inst.status === 'paid').length}/{expense.installments!.length} pagas)
                 </h4>
                 {expense.id && expandedExpenses.has(expense.id) ? (
                   <ChevronUp size={20} className="text-gray-500" />
@@ -303,7 +310,7 @@ export default function ExpenseList({ expenses, onDelete, onEdit, onRefresh }: E
               {expense.id && expandedExpenses.has(expense.id) && (
                 <div className="p-4 bg-gray-50">
                   <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-                    {expense.installments.map((installment) => (
+                    {expense.installments!.map((installment) => (
                       <div
                         key={installment.id}
                         className="flex items-center justify-between p-3 bg-white rounded border"
@@ -346,7 +353,8 @@ export default function ExpenseList({ expenses, onDelete, onEdit, onRefresh }: E
             </div>
           )}
         </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

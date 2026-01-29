@@ -1,431 +1,998 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Salary, Expense, Installment, MonthlyProjection, isSupabaseConfigured } from '@/lib/supabase'
+import { Salary, Expense, Installment, isSupabaseConfigured } from '@/lib/supabase'
 import { getSalaries, createSalary, updateSalary, deleteSalary } from '@/lib/database'
 import { getExpenses, createExpense, deleteExpense, ExpenseInput } from '@/lib/expenses'
-import SalaryForm from '@/components/SalaryForm'
-import SalaryList from '@/components/SalaryList'
-import ProjectionChartWithTabs from '@/components/ProjectionChartWithTabs'
-import ExpenseForm from '@/components/ExpenseForm'
-import ExpenseListWithTabs from '@/components/ExpenseListWithTabs'
-import ConfigEditor from '@/components/ConfigEditor'
+import { Plus, TrendingUp, Wallet, DollarSign, Calendar, ArrowUp, ArrowDown, X, Settings } from 'lucide-react'
 import { useConfig } from '@/contexts/ConfigContext'
-import { Plus, TrendingUp, AlertCircle, Settings, Wallet, DollarSign } from 'lucide-react'
+import { format, addMonths, startOfMonth, endOfMonth } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import ConfigEditor from '@/components/ConfigEditor'
+
+// Componente de Card Minimalista
+function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
+      {children}
+    </div>
+  )
+}
+
+// Componente de Botão Minimalista
+function Button({ 
+  children, 
+  onClick, 
+  variant = 'primary',
+  className = '',
+  icon: Icon,
+  type = 'button'
+}: { 
+  children: React.ReactNode
+  onClick?: () => void
+  variant?: 'primary' | 'secondary' | 'danger'
+  className?: string
+  icon?: any
+  type?: 'button' | 'submit'
+}) {
+  const variants = {
+    primary: 'bg-gray-900 hover:bg-gray-800 text-white',
+    secondary: 'bg-gray-100 hover:bg-gray-200 text-gray-900',
+    danger: 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
+  }
+  
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 ${variants[variant]} ${className}`}
+    >
+      {Icon && <Icon size={16} />}
+      {children}
+    </button>
+  )
+}
+
+// Formulário Simplificado de Salário
+function SalaryFormSimple({ 
+  salary, 
+  onSubmit, 
+  onCancel 
+}: { 
+  salary?: Salary | null
+  onSubmit: (data: Omit<Salary, 'id' | 'created_at' | 'updated_at'>) => void
+  onCancel: () => void
+}) {
+  const { getConfigValue } = useConfig()
+  const [formData, setFormData] = useState({
+    person: 'conjunto' as 'person1' | 'person2' | 'conjunto' | 'vr',
+    name: '',
+    value: 0
+  })
+
+  useEffect(() => {
+    if (salary) {
+      setFormData({
+        person: salary.person,
+        name: salary.name,
+        value: salary.value
+      })
+    }
+  }, [salary])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSubmit(formData)
+  }
+
+  return (
+    <Card>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">
+            {salary ? 'Editar Receita' : 'Nova Receita'}
+          </h3>
+          <button type="button" onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Tipo</label>
+            <select
+              value={formData.person}
+              onChange={(e) => setFormData({ ...formData, person: e.target.value as any })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            >
+              <option value="conjunto">{getConfigValue('conjunto_label') || 'Conjunto'}</option>
+              <option value="person1">{getConfigValue('person1_name') || 'Pessoa 1'}</option>
+              <option value="person2">{getConfigValue('person2_name') || 'Pessoa 2'}</option>
+              <option value="vr">{getConfigValue('vr_label') || 'VR'}</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Nome</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="Ex: Salário, Freelance..."
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Valor (R$)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.value}
+              onChange={(e) => setFormData({ ...formData, value: parseFloat(e.target.value) || 0 })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="0.00"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <Button type="submit" variant="primary" className="flex-1">
+            {salary ? 'Atualizar' : 'Adicionar'}
+          </Button>
+          <Button type="button" onClick={onCancel} variant="secondary">
+            Cancelar
+          </Button>
+        </div>
+      </form>
+    </Card>
+  )
+}
+
+// Formulário Simplificado de Despesa
+function ExpenseFormSimple({ 
+  expense, 
+  onSubmit, 
+  onCancel 
+}: { 
+  expense?: Expense | null
+  onSubmit: (data: ExpenseInput) => void
+  onCancel: () => void
+}) {
+  const { getConfigValue } = useConfig()
+  const [formData, setFormData] = useState({
+    type: 'fixo' as 'fixo' | 'parcelado' | 'unico',
+    name: '',
+    category: '',
+    amount: 0,
+    paid_by: 'conjunto' as 'person1' | 'person2' | 'vr' | 'conjunto',
+    total_installments: 1,
+    paid_installments: 0,
+    first_due_date: '',
+    due_date: '',
+    notes: ''
+  })
+
+  useEffect(() => {
+    if (expense) {
+      const paidCount = expense.installments?.filter(inst => inst.status === 'paid').length || 0
+      setFormData({
+        type: expense.type,
+        name: expense.name,
+        category: expense.category,
+        amount: expense.amount,
+        paid_by: expense.paid_by || 'conjunto',
+        total_installments: expense.total_installments || 1,
+        paid_installments: paidCount,
+        first_due_date: expense.start_date ? expense.start_date.slice(0, 10) : '',
+        due_date: expense.due_date ? expense.due_date.slice(0, 10) : '',
+        notes: expense.notes || ''
+      })
+    }
+  }, [expense])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSubmit({
+      name: formData.name,
+      category: formData.category,
+      amount: formData.amount,
+      type: formData.type,
+      paid_by: formData.paid_by,
+      notes: formData.notes,
+      total_installments: formData.type === 'parcelado' ? formData.total_installments : undefined,
+      paid_installments: formData.type === 'parcelado' ? formData.paid_installments : undefined,
+      first_due_date: formData.type === 'parcelado' ? formData.first_due_date : undefined,
+      due_date: formData.type === 'unico' ? formData.due_date : undefined,
+    })
+  }
+
+  // Calcular projeção de parcelas
+  const projectionMonths = formData.type === 'parcelado' && formData.amount > 0 && formData.total_installments > 0 && formData.first_due_date
+    ? Array.from({ length: Math.min(formData.total_installments, 12) }, (_, i) => {
+        const date = addMonths(new Date(formData.first_due_date), i)
+        const amount = formData.amount / formData.total_installments
+        return { date, amount, month: format(date, 'MMM/yyyy', { locale: ptBR }) }
+      })
+    : []
+
+  return (
+    <Card>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">
+            {expense ? 'Editar Despesa' : 'Nova Despesa'}
+          </h3>
+          <button type="button" onClick={onCancel} className="text-gray-400 hover:text-gray-600">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Tipo</label>
+            <select
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            >
+              <option value="fixo">Fixo Mensal</option>
+              <option value="parcelado">Parcelado</option>
+              <option value="unico">Único</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Pago Por</label>
+            <select
+              value={formData.paid_by}
+              onChange={(e) => setFormData({ ...formData, paid_by: e.target.value as any })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            >
+              <option value="conjunto">{getConfigValue('conjunto_label') || 'Conjunto'}</option>
+              <option value="person1">{getConfigValue('person1_name') || 'Pessoa 1'}</option>
+              <option value="person2">{getConfigValue('person2_name') || 'Pessoa 2'}</option>
+              <option value="vr">{getConfigValue('vr_label') || 'VR'}</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Nome</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="Ex: Aluguel, Cartão..."
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Categoria</label>
+            <input
+              type="text"
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="Ex: Moradia, Transporte..."
+              required
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Valor (R$)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.amount}
+              onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              placeholder="0.00"
+              required
+            />
+          </div>
+
+          {formData.type === 'parcelado' && (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">Parcelas</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={formData.total_installments}
+                  onChange={(e) => {
+                    const total = parseInt(e.target.value) || 1
+                    const paid = Math.min(formData.paid_installments, total)
+                    setFormData({ ...formData, total_installments: total, paid_installments: paid })
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">Já Pagas</label>
+                <input
+                  type="number"
+                  min="0"
+                  max={formData.total_installments}
+                  value={formData.paid_installments}
+                  onChange={(e) => {
+                    const paid = Math.min(parseInt(e.target.value) || 0, formData.total_installments)
+                    setFormData({ ...formData, paid_installments: paid })
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {formData.type === 'parcelado' && (
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Primeira Parcela</label>
+            <input
+              type="date"
+              value={formData.first_due_date}
+              onChange={(e) => setFormData({ ...formData, first_due_date: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              required
+            />
+          </div>
+        )}
+
+        {formData.type === 'unico' && (
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Data</label>
+            <input
+              type="date"
+              value={formData.due_date}
+              onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              required
+            />
+          </div>
+        )}
+
+        {/* Projeção de Parcelas */}
+        {projectionMonths.length > 0 && (
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp size={16} className="text-gray-600" />
+              <h4 className="text-sm font-semibold text-gray-900">Projeção dos Próximos Meses</h4>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {projectionMonths.map((proj, idx) => (
+                <div key={idx} className="bg-white rounded p-2 border border-gray-200">
+                  <p className="text-xs text-gray-600">{proj.month}</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    R$ {proj.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2 pt-2">
+          <Button type="submit" variant="primary" className="flex-1">
+            {expense ? 'Atualizar' : 'Adicionar'}
+          </Button>
+          <Button type="button" onClick={onCancel} variant="secondary">
+            Cancelar
+          </Button>
+        </div>
+      </form>
+    </Card>
+  )
+}
 
 export default function Home() {
   const { getConfigValue, reloadConfigs } = useConfig()
   const [salaries, setSalaries] = useState<Salary[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [editingSalary, setEditingSalary] = useState<Salary | null>(null)
-  const [showConfig, setShowConfig] = useState(false)
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [installments, setInstallments] = useState<Installment[]>([])
-  const [loadingExpenses, setLoadingExpenses] = useState(true)
+  const [loading, setLoading] = useState(true)
+  
+  // Estados de formulários
+  const [showSalaryForm, setShowSalaryForm] = useState(false)
+  const [editingSalary, setEditingSalary] = useState<Salary | null>(null)
   const [showExpenseForm, setShowExpenseForm] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
-  const [monthlyProjections, setMonthlyProjections] = useState<{ [key: string]: { conjunto: number; expenses: number } }>({})
-  const [editingProjection, setEditingProjection] = useState<{ year: number; month: number } | null>(null)
-  const [showProjectionSelector, setShowProjectionSelector] = useState(false)
+  const [showConfig, setShowConfig] = useState(false)
+  
+  // Mês selecionado
+  const today = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear())
 
   useEffect(() => {
-    loadSalaries()
-    loadExpenses()
+    loadData()
   }, [])
 
-  const loadSalaries = async () => {
+  const loadData = async () => {
     setLoading(true)
     try {
-      const data = await getSalaries()
-      setSalaries(data)
+      const [salariesData, expensesData] = await Promise.all([
+        getSalaries(),
+        getExpenses()
+      ])
+      setSalaries(salariesData)
+      setExpenses(expensesData)
+      const allInstallments = expensesData.flatMap(exp => exp.installments || [])
+      setInstallments(allInstallments)
     } catch (error) {
-      console.error('Erro ao carregar salários:', error)
+      console.error('Erro ao carregar dados:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const loadExpenses = async () => {
-    setLoadingExpenses(true)
-    try {
-      const data = await getExpenses()
-      console.log('📊 Carregando despesas:', data.length, 'registros encontrados')
-      setExpenses(data)
-      const allInstallments = data.flatMap(expense => expense.installments || [])
-      console.log('📊 Carregando parcelas:', allInstallments.length, 'parcelas encontradas')
-      setInstallments(allInstallments)
-    } catch (error) {
-      console.error('❌ Erro ao carregar gastos:', error)
-      alert('Erro ao carregar gastos. Verifique o console para mais detalhes.')
-    } finally {
-      setLoadingExpenses(false)
-    }
+  // Calcular valores do mês
+  const calculateMonthlyValues = () => {
+    const totalIncome = salaries.reduce((sum, s) => sum + s.value, 0)
+    
+    const monthStart = startOfMonth(new Date(selectedYear, selectedMonth))
+    const monthEnd = endOfMonth(new Date(selectedYear, selectedMonth))
+    
+    const fixedExpenses = expenses
+      .filter(e => e.type === 'fixo')
+      .reduce((sum, e) => sum + e.amount, 0)
+    
+    const monthInstallments = installments
+      .filter(inst => {
+        if (inst.status === 'paid') return false
+        const dueDate = new Date(inst.due_date)
+        return dueDate >= monthStart && dueDate <= monthEnd
+      })
+      .reduce((sum, inst) => sum + inst.amount, 0)
+    
+    const monthUniqueExpenses = expenses
+      .filter(e => {
+        if (e.type !== 'unico' || !e.due_date) return false
+        const dueDate = new Date(e.due_date)
+        return dueDate >= monthStart && dueDate <= monthEnd
+      })
+      .reduce((sum, e) => sum + e.amount, 0)
+    
+    const totalExpenses = fixedExpenses + monthInstallments + monthUniqueExpenses
+    const balance = totalIncome - totalExpenses
+    
+    return { totalIncome, totalExpenses, balance }
   }
 
-  const handleCreate = async (salary: Omit<Salary, 'id' | 'created_at' | 'updated_at'>) => {
+  const { totalIncome, totalExpenses, balance } = calculateMonthlyValues()
+
+  // Handlers
+  const handleCreateSalary = async (data: Omit<Salary, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      await createSalary(salary)
-      await loadSalaries()
-      setShowForm(false)
-    } catch (error: any) {
-      console.error('Erro ao criar salário:', error)
-      const errorMessage = error?.message || 'Erro desconhecido'
-      if (errorMessage.includes('CHECK constraint') || errorMessage.includes('person')) {
-        alert('⚠️ Erro: O banco de dados precisa ser atualizado.\n\nExecute o arquivo supabase/fix_database.sql no SQL Editor do Supabase para corrigir isso.')
+      if (editingSalary) {
+        await updateSalary(editingSalary.id!, data)
       } else {
-        alert(`Erro ao criar salário: ${errorMessage}\n\nVerifique o console para mais detalhes.`)
+        await createSalary(data)
       }
-    }
-  }
-
-  const handleUpdate = async (id: string, salary: Partial<Salary>) => {
-    try {
-      await updateSalary(id, salary)
-      await loadSalaries()
+      await loadData()
+      setShowSalaryForm(false)
       setEditingSalary(null)
     } catch (error) {
-      console.error('Erro ao atualizar salário:', error)
-      alert('Erro ao atualizar salário. Verifique o console para mais detalhes.')
+      console.error('Erro ao salvar receita:', error)
+      alert('Erro ao salvar receita')
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este salário?')) {
-      try {
-        await deleteSalary(id)
-        await loadSalaries()
-      } catch (error) {
-        console.error('Erro ao deletar salário:', error)
-        alert('Erro ao deletar salário. Verifique o console para mais detalhes.')
-      }
-    }
-  }
-
-  const handleEdit = (salary: Salary) => {
-    setEditingSalary(salary)
-    setShowForm(true)
-  }
-
-  const handleCancel = () => {
-    setShowForm(false)
-    setEditingSalary(null)
-  }
-
-  const handleConfigClose = async () => {
-    setShowConfig(false)
-    await reloadConfigs()
-  }
-
-  const handleCreateExpenseEntry = async (expenseData: ExpenseInput) => {
+  const handleCreateExpense = async (data: ExpenseInput) => {
     try {
-      if (editingExpense && editingExpense.id) {
+      if (editingExpense) {
         const { updateExpense } = await import('@/lib/expenses')
-        await updateExpense(editingExpense.id, expenseData)
+        await updateExpense(editingExpense.id!, data)
       } else {
-        await createExpense(expenseData)
+        await createExpense(data)
       }
-      await loadExpenses()
+      await loadData()
       setShowExpenseForm(false)
       setEditingExpense(null)
-    } catch (error: any) {
-      console.error('Erro ao salvar gasto:', error)
-      const errorMessage = error?.message || 'Erro desconhecido'
-      if (errorMessage.includes('CHECK constraint') || errorMessage.includes('paid_by')) {
-        alert('⚠️ Erro: O banco de dados precisa ser atualizado.\n\nExecute o arquivo supabase/fix_database.sql no SQL Editor do Supabase para corrigir isso.')
-      } else {
-        alert(`Erro ao salvar gasto: ${errorMessage}\n\nVerifique o console para mais detalhes.`)
+    } catch (error) {
+      console.error('Erro ao salvar despesa:', error)
+      alert('Erro ao salvar despesa')
+    }
+  }
+
+  const handleDeleteSalary = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir esta receita?')) {
+      try {
+        await deleteSalary(id)
+        await loadData()
+      } catch (error) {
+        console.error('Erro ao excluir receita:', error)
       }
     }
   }
 
-  const handleEditExpense = (expense: Expense) => {
-    setEditingExpense(expense)
-    setShowExpenseForm(true)
-  }
-
-  const handleCancelExpenseForm = () => {
-    setShowExpenseForm(false)
-    setEditingExpense(null)
-  }
-
-  const handleAddExpense = () => {
-    setEditingExpense(null)
-    setShowExpenseForm(true)
-  }
-
-  const handleDeleteExpenseEntry = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este gasto?')) {
+  const handleDeleteExpense = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir esta despesa?')) {
       try {
         await deleteExpense(id)
-        await loadExpenses()
+        await loadData()
       } catch (error) {
-        console.error('Erro ao excluir gasto:', error)
-        alert('Erro ao excluir gasto. Verifique o console para mais detalhes.')
+        console.error('Erro ao excluir despesa:', error)
       }
     }
   }
 
-  const totalConjunto = salaries
-    .filter(s => s.person === 'conjunto')
-    .reduce((sum, s) => sum + s.value, 0)
-
-  const totalPerson1 = salaries
-    .filter(s => s.person === 'person1')
-    .reduce((sum, s) => sum + s.value, 0)
-
-  const totalPerson2 = salaries
-    .filter(s => s.person === 'person2')
-    .reduce((sum, s) => sum + s.value, 0)
-
-  const totalVR = salaries
-    .filter(s => s.person === 'vr')
-    .reduce((sum, s) => sum + s.value, 0)
-
-  const totalGeral = totalConjunto + totalPerson1 + totalPerson2 + totalVR
-
-  const totalFixedExpenses = expenses
-    .filter(expense => expense.type === 'fixo')
-    .reduce((sum, expense) => sum + expense.amount, 0)
-
-  const totalPendingInstallments = installments
-    .filter(installment => installment.status !== 'paid')
-    .reduce((sum, installment) => sum + installment.amount, 0)
-
-  // Gastos únicos pendentes (vencimento futuro ou hoje)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const totalUniqueExpenses = expenses
-    .filter(expense => {
-      if (expense.type !== 'unico' || !expense.due_date) return false
-      const dueDate = new Date(expense.due_date)
-      dueDate.setHours(0, 0, 0, 0)
-      return dueDate >= today
-    })
-    .reduce((sum, expense) => sum + expense.amount, 0)
-
-  const totalDespesas = totalFixedExpenses + totalPendingInstallments + totalUniqueExpenses
-  const saldoGeral = totalGeral - totalDespesas
+  const monthLabel = format(new Date(selectedYear, selectedMonth), 'MMMM yyyy', { locale: ptBR })
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8 flex justify-between items-start">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">
               {getConfigValue('site_title') || 'Controle Financeiro'}
             </h1>
-            <p className="text-gray-600">
-              {getConfigValue('site_subtitle') || 'Gestão de salários para duas pessoas'}
+            <p className="text-sm text-gray-600">
+              {getConfigValue('site_subtitle') || 'Gestão simples do seu dinheiro'}
             </p>
           </div>
-          <button
-            onClick={() => setShowConfig(true)}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg shadow-md transition-colors flex items-center gap-2"
-            title="Configurações do Site"
-          >
-            <Settings size={20} />
+          <Button onClick={() => setShowConfig(true)} variant="secondary" icon={Settings}>
             Configurações
-          </button>
+          </Button>
         </div>
 
-        {/* Alerta de configuração */}
+        {/* Alerta Supabase */}
         {!isSupabaseConfigured && (
-          <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg shadow-md">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="text-yellow-600" size={20} />
-              <div>
-                <h3 className="font-semibold text-yellow-800 mb-1">⚠️ Supabase não configurado</h3>
-                <p className="text-sm text-yellow-700">
-                  Para salvar seus dados, configure o arquivo <code className="bg-yellow-100 px-1 rounded">.env.local</code> com suas credenciais do Supabase. 
-                  Veja o arquivo <code className="bg-yellow-100 px-1 rounded">README.md</code> para instruções.
-                </p>
-              </div>
-            </div>
+          <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p className="text-sm text-yellow-800">
+              ⚠️ Configure o Supabase no arquivo <code className="bg-yellow-100 px-1 rounded">.env.local</code>
+            </p>
           </div>
         )}
 
-        {/* Card de Saldo Restante - Destaque */}
-        <div className={`mb-8 rounded-xl shadow-lg p-8 border-2 ${
-          saldoGeral >= 0 
-            ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-300' 
-            : 'bg-gradient-to-br from-red-50 to-rose-50 border-red-300'
-        }`}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className={`p-3 rounded-full ${
-              saldoGeral >= 0 
-                ? 'bg-green-100 text-green-600' 
-                : 'bg-red-100 text-red-600'
-            }`}>
-              <DollarSign size={28} />
+        {/* Seletor de Mês */}
+        <Card className="mb-6">
+          <div className="flex items-center gap-4">
+            <Calendar size={18} className="text-gray-600" />
+            <label className="text-sm font-medium text-gray-700">Visualizar:</label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            >
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i} value={i}>
+                  {format(new Date(2024, i), 'MMMM', { locale: ptBR })}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            >
+              {Array.from({ length: 5 }, (_, i) => today.getFullYear() - 1 + i).map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+            <Button 
+              onClick={() => {
+                setSelectedMonth(today.getMonth())
+                setSelectedYear(today.getFullYear())
+              }}
+              variant="secondary"
+              className="ml-auto"
+            >
+              Mês Atual
+            </Button>
+          </div>
+        </Card>
+
+        {/* Dashboard - Cards Principais */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-600">Receitas</span>
+              <ArrowUp size={18} className="text-green-600" />
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                Saldo Restante
-              </h2>
-              <p className="text-sm text-gray-600">
-                Total disponível após despesas
-              </p>
+            <p className="text-2xl font-bold text-gray-900">
+              R$ {totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">{monthLabel}</p>
+          </Card>
+
+          <Card>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-600">Despesas</span>
+              <ArrowDown size={18} className="text-red-600" />
             </div>
-          </div>
-          <div className={`text-5xl font-bold ${
-            saldoGeral >= 0 ? 'text-green-600' : 'text-red-600'
-          }`}>
-            R$ {saldoGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </div>
-          <div className={`mt-2 text-sm font-medium ${
-            saldoGeral >= 0 ? 'text-green-700' : 'text-red-700'
-          }`}>
-            {saldoGeral >= 0 ? '✅ Saldo positivo' : '⚠️ Saldo negativo'}
-          </div>
+            <p className="text-2xl font-bold text-gray-900">
+              R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">{monthLabel}</p>
+          </Card>
+
+          <Card>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-600">Saldo</span>
+              <DollarSign size={18} className={balance >= 0 ? 'text-green-600' : 'text-red-600'} />
+            </div>
+            <p className={`text-2xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">{monthLabel}</p>
+          </Card>
         </div>
 
-        {/* Cards de Resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-sm text-gray-500 mb-1">
-              {getConfigValue('total_geral_label') || 'Total Geral'}
-            </div>
-            <div className="text-2xl font-bold text-gray-900">
-              R$ {totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-sm text-gray-500 mb-1">
-              Total Despesas
-            </div>
-            <div className="text-2xl font-bold text-red-600">
-              R$ {totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-sm text-gray-500 mb-1">
-              {getConfigValue('person1_name') || 'Pessoa 1'}
-            </div>
-            <div className="text-2xl font-bold text-blue-600">
-              R$ {totalPerson1.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-sm text-gray-500 mb-1">
-              {getConfigValue('person2_name') || 'Pessoa 2'}
-            </div>
-            <div className="text-2xl font-bold text-purple-600">
-              R$ {totalPerson2.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-sm text-gray-500 mb-1">
-              {getConfigValue('vr_label') || 'Vale Refeição (VR)'}
-            </div>
-            <div className="text-2xl font-bold text-orange-600">
-              R$ {totalVR.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </div>
-          </div>
-        </div>
-
-        {/* Botão Adicionar */}
-        {!showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="mb-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-colors flex items-center gap-2"
-          >
-            <Plus size={20} />
-            {getConfigValue('button_add_salary') || 'Adicionar Salário'}
-          </button>
-        )}
-
-        {/* Formulário */}
-        {showForm && (
-          <div className="mb-8">
-            <SalaryForm
+        {/* Formulários */}
+        {showSalaryForm && (
+          <div className="mb-6">
+            <SalaryFormSimple
               salary={editingSalary}
-              onSubmit={editingSalary ? (data) => handleUpdate(editingSalary.id!, data) : handleCreate}
-              onCancel={handleCancel}
+              onSubmit={handleCreateSalary}
+              onCancel={() => {
+                setShowSalaryForm(false)
+                setEditingSalary(null)
+              }}
             />
           </div>
         )}
 
-        {/* Gráfico de Projeção com Abas */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="text-blue-600" size={24} />
-            <h2 className="text-2xl font-bold text-gray-900">
-              {getConfigValue('projection_title') || 'Projeção de Salários (Próximos 12 Meses)'}
-            </h2>
-          </div>
-          <ProjectionChartWithTabs 
-            salaries={salaries} 
-            expenses={expenses} 
-            installments={installments}
-          />
-        </div>
-
-        {/* Lista de Salários */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            {getConfigValue('salaries_list_title') || 'Salários Cadastrados'}
-          </h2>
-          {loading ? (
-            <div className="text-center py-8 text-gray-500">Carregando...</div>
-          ) : (
-            <SalaryList
-              salaries={salaries}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
+        {showExpenseForm && (
+          <div className="mb-6">
+            <ExpenseFormSimple
+              expense={editingExpense}
+              onSubmit={handleCreateExpense}
+              onCancel={() => {
+                setShowExpenseForm(false)
+                setEditingExpense(null)
+              }}
             />
-          )}
-        </div>
-
-        {/* Gastos e Parcelamentos */}
-        <div className="mt-12">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-1">Gastos e Compras Parceladas</h2>
-              <p className="text-gray-600">
-                Cadastre gastos fixos mensais e compras parceladas. As parcelas são criadas automaticamente e podem ser marcadas como pagas.
-              </p>
-            </div>
-            {!showExpenseForm && (
-              <button
-                onClick={handleAddExpense}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-colors flex items-center gap-2"
-              >
-                <Wallet size={20} />
-                Adicionar Gasto ou Compra Parcelada
-              </button>
-            )}
           </div>
+        )}
 
-          {showExpenseForm && (
-            <div className="mb-8">
-              <ExpenseForm
-                expense={editingExpense}
-                onSubmit={handleCreateExpenseEntry}
-                onCancel={handleCancelExpenseForm}
-              />
+        {/* Botões de Ação */}
+        {!showSalaryForm && !showExpenseForm && (
+          <div className="flex gap-3 mb-8">
+            <Button onClick={() => setShowSalaryForm(true)} variant="primary" icon={Plus}>
+              Nova Receita
+            </Button>
+            <Button onClick={() => setShowExpenseForm(true)} variant="primary" icon={Plus}>
+              Nova Despesa
+            </Button>
+          </div>
+        )}
+
+        {/* Lista de Receitas */}
+        <Card className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Receitas</h2>
+            <span className="text-sm text-gray-500">{salaries.length} itens</span>
+          </div>
+          {loading ? (
+            <p className="text-sm text-gray-500 text-center py-8">Carregando...</p>
+          ) : salaries.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-8">Nenhuma receita cadastrada</p>
+          ) : (
+            <div className="space-y-2">
+              {salaries.map(salary => (
+                <div key={salary.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{salary.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {getConfigValue(salary.person === 'person1' ? 'person1_name' : salary.person === 'person2' ? 'person2_name' : salary.person === 'vr' ? 'vr_label' : 'conjunto_label') || salary.person}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <p className="font-semibold text-gray-900">
+                      R$ {salary.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                    <div className="flex gap-1">
+                      <Button
+                        onClick={() => {
+                          setEditingSalary(salary)
+                          setShowSalaryForm(true)
+                        }}
+                        variant="secondary"
+                        className="px-2 py-1"
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        onClick={() => handleDeleteSalary(salary.id!)}
+                        variant="danger"
+                        className="px-2 py-1"
+                      >
+                        Excluir
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
+        </Card>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">Gastos Registrados</h3>
-            {loadingExpenses ? (
-              <div className="text-center py-8 text-gray-500">Carregando...</div>
-            ) : (
-              <ExpenseListWithTabs
-                expenses={expenses}
-                onDelete={handleDeleteExpenseEntry}
-                onEdit={handleEditExpense}
-                onRefresh={loadExpenses}
-              />
-            )}
+        {/* Lista de Despesas */}
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Despesas</h2>
+            <span className="text-sm text-gray-500">{expenses.length} itens</span>
           </div>
-        </div>
+          {loading ? (
+            <p className="text-sm text-gray-500 text-center py-8">Carregando...</p>
+          ) : expenses.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-8">Nenhuma despesa cadastrada</p>
+          ) : (
+            <div className="space-y-2">
+              {expenses.map(expense => {
+                const pendingInstallments = expense.installments?.filter(i => i.status === 'pending').length || 0
+                return (
+                  <div key={expense.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{expense.name}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-gray-500">{expense.category}</span>
+                        <span className="text-xs px-2 py-0.5 bg-gray-200 rounded">
+                          {expense.type === 'fixo' ? 'Fixo' : expense.type === 'parcelado' ? `Parcelado (${pendingInstallments} pendentes)` : 'Único'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <p className="font-semibold text-gray-900">
+                        R$ {expense.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                      <div className="flex gap-1">
+                        <Button
+                          onClick={() => {
+                            setEditingExpense(expense)
+                            setShowExpenseForm(true)
+                          }}
+                          variant="secondary"
+                          className="px-2 py-1"
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteExpense(expense.id!)}
+                          variant="danger"
+                          className="px-2 py-1"
+                        >
+                          Excluir
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </Card>
 
-        {/* Editor de Configurações */}
-        {showConfig && <ConfigEditor onClose={handleConfigClose} />}
+        {/* Projeção Futura */}
+        <Card className="mt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp size={20} className="text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Projeção dos Próximos 12 Meses</h2>
+          </div>
+          <ProjectionChart salaries={salaries} expenses={expenses} installments={installments} />
+        </Card>
+
+        {/* Config Editor */}
+        {showConfig && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <ConfigEditor onClose={async () => {
+                setShowConfig(false)
+                await reloadConfigs()
+              }} />
+            </div>
+          </div>
+        )}
       </div>
-    </main>
+    </div>
   )
 }
 
+// Componente de Projeção Visual Melhorado
+function ProjectionChart({ 
+  salaries, 
+  expenses, 
+  installments 
+}: { 
+  salaries: Salary[]
+  expenses: Expense[]
+  installments: Installment[]
+}) {
+  const [chartData, setChartData] = useState<Array<{
+    month: string
+    income: number
+    expenses: number
+    balance: number
+    date: Date
+  }>>([])
+  const [expandedMonth, setExpandedMonth] = useState<number | null>(null)
+
+  useEffect(() => {
+    const today = new Date()
+    const projection: typeof chartData = []
+
+    const totalIncome = salaries.reduce((sum, s) => sum + s.value, 0)
+    const fixedExpenses = expenses
+      .filter(e => e.type === 'fixo')
+      .reduce((sum, e) => sum + e.amount, 0)
+
+    const pendingInstallments = installments.filter(i => i.status === 'pending')
+
+    for (let i = 0; i < 12; i++) {
+      const monthDate = addMonths(today, i)
+      const monthLabel = format(monthDate, 'MMM/yyyy', { locale: ptBR })
+
+      const monthInstallments = pendingInstallments
+        .filter(inst => {
+          const instDate = new Date(inst.due_date)
+          return instDate.getMonth() === monthDate.getMonth() && instDate.getFullYear() === monthDate.getFullYear()
+        })
+        .reduce((sum, inst) => sum + inst.amount, 0)
+
+      const monthUniqueExpenses = expenses
+        .filter(e => {
+          if (e.type !== 'unico' || !e.due_date) return false
+          const expenseDate = new Date(e.due_date)
+          return expenseDate.getMonth() === monthDate.getMonth() && expenseDate.getFullYear() === monthDate.getFullYear()
+        })
+        .reduce((sum, e) => sum + e.amount, 0)
+
+      const totalExpenses = fixedExpenses + monthInstallments + monthUniqueExpenses
+      const balance = totalIncome - totalExpenses
+
+      projection.push({
+        month: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
+        income: totalIncome,
+        expenses: totalExpenses,
+        balance,
+        date: monthDate
+      })
+    }
+
+    setChartData(projection)
+  }, [salaries, expenses, installments])
+
+  if (chartData.length === 0) {
+    return <p className="text-sm text-gray-500 text-center py-8">Carregando projeção...</p>
+  }
+
+  const today = new Date()
+  const maxExpense = Math.max(...chartData.map(d => d.expenses), 1)
+  const maxIncome = Math.max(...chartData.map(d => d.income), 1)
+
+  return (
+    <div className="space-y-2">
+      {chartData.map((data, idx) => {
+        const isCurrentMonth = data.date.getMonth() === today.getMonth() && data.date.getFullYear() === today.getFullYear()
+        const isExpanded = expandedMonth === idx
+        
+        return (
+          <div 
+            key={idx} 
+            className={`border rounded-lg transition-all ${
+              isCurrentMonth 
+                ? 'border-gray-900 bg-gray-50' 
+                : 'border-gray-200 bg-white'
+            }`}
+          >
+            <div 
+              className="flex items-center gap-4 p-4 cursor-pointer hover:bg-gray-50"
+              onClick={() => setExpandedMonth(isExpanded ? null : idx)}
+            >
+              <div className="w-28">
+                <div className={`text-sm font-semibold ${isCurrentMonth ? 'text-gray-900' : 'text-gray-700'}`}>
+                  {data.month}
+                </div>
+                {isCurrentMonth && (
+                  <div className="text-xs text-gray-500 mt-0.5">Mês Atual</div>
+                )}
+              </div>
+              
+              <div className="flex-1 space-y-2">
+                {/* Barra de Receitas */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-gray-600">Receitas</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      R$ {data.income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-green-500 transition-all"
+                      style={{ width: `${(data.income / maxIncome) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Barra de Despesas */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-gray-600">Despesas</span>
+                    <span className="text-sm font-semibold text-red-600">
+                      R$ {data.expenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-red-500 transition-all"
+                      style={{ width: `${(data.expenses / maxExpense) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-32 text-right">
+                <div className="text-xs text-gray-600 mb-1">Saldo</div>
+                <div className={`text-lg font-bold ${data.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  R$ {data.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <div className={`text-xs mt-1 ${data.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {data.balance >= 0 ? '✓ Positivo' : '⚠ Negativo'}
+                </div>
+              </div>
+            </div>
+
+            {/* Detalhes Expandidos */}
+            {isExpanded && (
+              <div className="border-t border-gray-200 p-4 bg-gray-50">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Receitas Fixas</p>
+                    <p className="font-semibold text-gray-900">
+                      R$ {data.income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Despesas Fixas</p>
+                    <p className="font-semibold text-red-600">
+                      R$ {expenses.filter(e => e.type === 'fixo').reduce((sum, e) => sum + e.amount, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Parcelas do Mês</p>
+                    <p className="font-semibold text-orange-600">
+                      R$ {installments
+                        .filter(inst => {
+                          if (inst.status === 'paid') return false
+                          const instDate = new Date(inst.due_date)
+                          return instDate.getMonth() === data.date.getMonth() && instDate.getFullYear() === data.date.getFullYear()
+                        })
+                        .reduce((sum, inst) => sum + inst.amount, 0)
+                        .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1">Gastos Únicos</p>
+                    <p className="font-semibold text-purple-600">
+                      R$ {expenses
+                        .filter(e => {
+                          if (e.type !== 'unico' || !e.due_date) return false
+                          const expenseDate = new Date(e.due_date)
+                          return expenseDate.getMonth() === data.date.getMonth() && expenseDate.getFullYear() === data.date.getFullYear()
+                        })
+                        .reduce((sum, e) => sum + e.amount, 0)
+                        .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
