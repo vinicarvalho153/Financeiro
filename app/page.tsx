@@ -482,9 +482,10 @@ export default function Home() {
       await loadData()
       setShowSalaryForm(false)
       setEditingSalary(null)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar receita:', error)
-      alert('Erro ao salvar receita')
+      const errorMessage = error?.message || 'Erro desconhecido ao salvar receita'
+      alert(`❌ Erro ao salvar receita:\n\n${errorMessage}\n\nVerifique:\n- Se o Supabase está configurado no .env.local\n- Se as tabelas foram criadas no banco de dados\n- Console do navegador (F12) para mais detalhes`)
     }
   }
 
@@ -499,9 +500,10 @@ export default function Home() {
       await loadData()
       setShowExpenseForm(false)
       setEditingExpense(null)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar despesa:', error)
-      alert('Erro ao salvar despesa')
+      const errorMessage = error?.message || 'Erro desconhecido ao salvar despesa'
+      alert(`❌ Erro ao salvar despesa:\n\n${errorMessage}\n\nVerifique:\n- Se o Supabase está configurado no .env.local\n- Se as tabelas foram criadas no banco de dados\n- Se todos os campos obrigatórios foram preenchidos\n- Console do navegador (F12) para mais detalhes`)
     }
   }
 

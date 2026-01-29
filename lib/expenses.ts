@@ -58,6 +58,10 @@ export async function createExpense(input: ExpenseInput): Promise<void> {
     throw new Error('⚠️ Supabase não configurado. Configure o arquivo .env.local com suas credenciais do Supabase.')
   }
 
+  // Formatar datas para o formato correto (YYYY-MM-DD)
+  const formattedStartDate = input.first_due_date ? input.first_due_date.split('T')[0] : null
+  const formattedDueDate = input.due_date ? input.due_date.split('T')[0] : null
+
   const { data: expense, error } = await supabase
     .from('expenses')
     .insert([{
@@ -69,15 +73,16 @@ export async function createExpense(input: ExpenseInput): Promise<void> {
       is_recurring: input.type === 'fixo',
       total_installments: input.type === 'parcelado' ? input.total_installments ?? null : null,
       notes: input.notes ?? null,
-      start_date: input.first_due_date ?? null,
-      due_date: input.type === 'unico' ? input.due_date ?? null : null,
+      start_date: formattedStartDate,
+      due_date: formattedDueDate,
     }])
     .select()
     .single()
 
   if (error || !expense) {
     console.error('Erro ao criar gasto:', error)
-    throw error
+    console.error('Detalhes do erro:', JSON.stringify(error, null, 2))
+    throw new Error(`Erro ao criar despesa: ${error?.message || 'Erro desconhecido'}`)
   }
 
   if (input.type === 'parcelado') {
@@ -95,11 +100,14 @@ export async function createExpense(input: ExpenseInput): Promise<void> {
       const roundedAmount = Number(baseAmount.toFixed(2))
       const isPaid = i < paidCount
       
+      // Formatar data como YYYY-MM-DD (apenas data, sem hora)
+      const formattedDate = dueDate.toISOString().split('T')[0]
+      
       installments.push({
         expense_id: expense.id,
         installment_number: i + 1,
         amount: roundedAmount,
-        due_date: dueDate.toISOString(),
+        due_date: formattedDate,
         status: isPaid ? 'paid' : 'pending',
         paid_at: isPaid ? now.toISOString() : null,
       })
@@ -111,7 +119,8 @@ export async function createExpense(input: ExpenseInput): Promise<void> {
 
     if (installmentsError) {
       console.error('Erro ao criar parcelas:', installmentsError)
-      throw installmentsError
+      console.error('Detalhes do erro:', JSON.stringify(installmentsError, null, 2))
+      throw new Error(`Erro ao criar parcelas: ${installmentsError?.message || 'Erro desconhecido'}`)
     }
   }
 }

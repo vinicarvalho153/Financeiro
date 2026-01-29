@@ -32,7 +32,8 @@ export async function createSalary(salary: Omit<Salary, 'id' | 'created_at' | 'u
 
   if (error) {
     console.error('Erro ao criar salário:', error)
-    throw error
+    console.error('Detalhes do erro:', JSON.stringify(error, null, 2))
+    throw new Error(`Erro ao criar receita: ${error?.message || 'Erro desconhecido'}`)
   }
 
   return data as Salary
@@ -52,7 +53,8 @@ export async function updateSalary(id: string, salary: Partial<Salary>) {
 
   if (error) {
     console.error('Erro ao atualizar salário:', error)
-    throw error
+    console.error('Detalhes do erro:', JSON.stringify(error, null, 2))
+    throw new Error(`Erro ao atualizar receita: ${error?.message || 'Erro desconhecido'}`)
   }
 
   return data as Salary
