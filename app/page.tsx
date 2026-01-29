@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { Salary, Expense, Installment, isSupabaseConfigured } from '@/lib/supabase'
 import { getSalaries, createSalary, updateSalary, deleteSalary } from '@/lib/database'
 import { getExpenses, createExpense, deleteExpense, ExpenseInput } from '@/lib/expenses'
-import { Plus, TrendingUp, Wallet, DollarSign, Calendar, ArrowUp, ArrowDown, X, Settings } from 'lucide-react'
+import { Plus, TrendingUp, Wallet, DollarSign, Calendar, ArrowUp, ArrowDown, X, Settings, PieChart } from 'lucide-react'
 import { useConfig } from '@/contexts/ConfigContext'
 import { format, addMonths, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import ConfigEditor from '@/components/ConfigEditor'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts'
 
 // Componente de Card Minimalista
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -932,6 +933,15 @@ export default function Home() {
           )}
         </Card>
 
+        {/* Gráfico de Gastos por Categoria */}
+        <Card className="mt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <PieChart size={20} className="text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Gastos por Categoria - {monthLabel}</h2>
+          </div>
+          <ExpensesByCategoryChart expenses={expenses} installments={installments} selectedYear={selectedYear} selectedMonth={selectedMonth} />
+        </Card>
+
         {/* Projeção Futura */}
         <Card className="mt-6">
           <div className="flex items-center gap-2 mb-4">
@@ -1095,6 +1105,213 @@ function ProjectionChart({
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// Componente de Gráfico de Gastos por Categoria
+function ExpensesByCategoryChart({ 
+  expenses, 
+  installments,
+  selectedYear,
+  selectedMonth
+}: { 
+  expenses: Expense[]
+  installments: Installment[]
+  selectedYear: number
+  selectedMonth: number
+}) {
+  const [chartData, setChartData] = useState<Array<{
+    category: string
+    value: number
+    count: number
+  }>>([])
+
+  useEffect(() => {
+    const categoryMap = new Map<string, number>()
+    
+    // Despesas fixas (sempre contam)
+    expenses
+      .filter(e => e.type === 'fixo')
+      .forEach(e => {
+        const current = categoryMap.get(e.category) || 0
+        categoryMap.set(e.category, current + e.amount)
+      })
+    
+    // Parcelas do mês selecionado
+    const monthInstallments = installments.filter(inst => {
+      if (inst.status === 'paid') return false
+      const dueDate = new Date(inst.due_date)
+      return dueDate.getFullYear() === selectedYear && dueDate.getMonth() === selectedMonth
+    })
+    
+    monthInstallments.forEach(inst => {
+      const expense = expenses.find(e => e.installments?.some(i => i.id === inst.id))
+      if (expense) {
+        const current = categoryMap.get(expense.category) || 0
+        categoryMap.set(expense.category, current + inst.amount)
+      }
+    })
+    
+    // Gastos únicos do mês selecionado
+    expenses
+      .filter(e => {
+        if (e.type !== 'unico' || !e.due_date) return false
+        const dueDate = new Date(e.due_date)
+        return dueDate.getFullYear() === selectedYear && dueDate.getMonth() === selectedMonth
+      })
+      .forEach(e => {
+        const current = categoryMap.get(e.category) || 0
+        categoryMap.set(e.category, current + e.amount)
+      })
+    
+    // Converter para array e ordenar por valor
+    const data = Array.from(categoryMap.entries())
+      .map(([category, value]) => ({
+        category,
+        value: Number(value.toFixed(2)),
+        count: expenses.filter(e => e.category === category).length
+      }))
+      .sort((a, b) => b.value - a.value)
+    
+    setChartData(data)
+  }, [expenses, installments, selectedYear, selectedMonth])
+
+  if (chartData.length === 0) {
+    return (
+      <div className="text-center py-12 text-gray-500">
+        <p className="text-sm">Nenhum gasto encontrado para este mês</p>
+      </div>
+    )
+  }
+
+  // Cores para o gráfico de pizza
+  const COLORS = [
+    '#3b82f6', // azul
+    '#ef4444', // vermelho
+    '#10b981', // verde
+    '#f59e0b', // laranja
+    '#8b5cf6', // roxo
+    '#ec4899', // rosa
+    '#06b6d4', // ciano
+    '#84cc16', // lima
+    '#f97316', // laranja escuro
+    '#6366f1', // índigo
+  ]
+
+  const total = chartData.reduce((sum, item) => sum + item.value, 0)
+
+  return (
+    <div className="space-y-6">
+      {/* Gráfico de Barras */}
+      <div className="w-full" style={{ height: '300px' }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis 
+              dataKey="category" 
+              stroke="#6b7280"
+              style={{ fontSize: '12px' }}
+              angle={-45}
+              textAnchor="end"
+              height={80}
+            />
+            <YAxis 
+              stroke="#6b7280"
+              style={{ fontSize: '12px' }}
+              tickFormatter={(value) => `R$ ${(value / 1000).toFixed(1)}k`}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#fff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                padding: '12px',
+              }}
+              formatter={(value: number) => [
+                `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                'Valor'
+              ]}
+            />
+            <Bar dataKey="value" fill="#3b82f6" radius={[8, 8, 0, 0]}>
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Gráfico de Pizza */}
+      <div className="w-full" style={{ height: '300px' }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <RechartsPieChart>
+            <Pie
+              data={chartData}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              label={({ category, percent }) => `${category}: ${(percent * 100).toFixed(0)}%`}
+              outerRadius={80}
+              fill="#8884d8"
+              dataKey="value"
+            >
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#fff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                padding: '12px',
+              }}
+              formatter={(value: number) => [
+                `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                'Valor'
+              ]}
+            />
+          </RechartsPieChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Lista de Categorias */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {chartData.map((item, index) => {
+          const percentage = ((item.value / total) * 100).toFixed(1)
+          return (
+            <div key={item.category} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div 
+                  className="w-4 h-4 rounded"
+                  style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                />
+                <div>
+                  <p className="font-medium text-gray-900">{item.category}</p>
+                  <p className="text-xs text-gray-500">{item.count} {item.count === 1 ? 'gasto' : 'gastos'}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-semibold text-gray-900">
+                  R$ {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+                <p className="text-xs text-gray-500">{percentage}%</p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Total */}
+      <div className="pt-4 border-t border-gray-200">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-700">Total do Mês</span>
+          <span className="text-xl font-bold text-gray-900">
+            R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+      </div>
     </div>
   )
 }
