@@ -487,33 +487,135 @@ export default function Home() {
       })
       .reduce((sum, e) => sum + e.amount, 0)
     
+    // Verificar se há despesas que não estão sendo contadas
+    const allExpensesInMonth = expenses.filter(e => {
+      // Despesas fixas sempre contam
+      if (e.type === 'fixo') return true
+      
+      // Despesas parceladas: verificar se tem parcelas no mês
+      if (e.type === 'parcelado') {
+        const hasMonthInst = e.installments?.some(inst => {
+          if (inst.status === 'paid') return false
+          const dueDate = new Date(inst.due_date)
+          return dueDate.getFullYear() === selectedYear && dueDate.getMonth() === selectedMonth
+        })
+        return hasMonthInst
+      }
+      
+      // Despesas únicas: verificar se a data está no mês
+      if (e.type === 'unico' && e.due_date) {
+        const dueDate = new Date(e.due_date)
+        return dueDate.getFullYear() === selectedYear && dueDate.getMonth() === selectedMonth
+      }
+      
+      return false
+    })
+    
     const totalExpenses = fixedExpenses + monthInstallments + monthUniqueExpenses
     const balance = totalIncome - totalExpenses
     
-    // Logs de debug
-    console.log('📊 Cálculo do mês:', new Date(selectedYear, selectedMonth).toLocaleString('pt-BR', { month: 'long', year: 'numeric' }))
-    console.log('📊 Despesas fixas:', fixedExpenses)
-    console.log('📊 Parcelas do mês:', monthInstallments)
-    console.log('📊 Gastos únicos do mês:', monthUniqueExpenses)
-    console.log('📊 Total de despesas:', totalExpenses)
-    console.log('📊 Detalhes das parcelas:', installments.filter(inst => {
+    // Log adicional: todas as despesas que deveriam estar no mês
+    console.log('📋 TODAS AS DESPESAS QUE DEVERIAM ESTAR NO MÊS:', allExpensesInMonth.length)
+    allExpensesInMonth.forEach(e => {
+      if (e.type === 'fixo') {
+        console.log(`  ✓ FIXO: ${e.name} - R$ ${e.amount.toFixed(2)}`)
+      } else if (e.type === 'parcelado') {
+        const monthInst = e.installments?.find(inst => {
+          if (inst.status === 'paid') return false
+          const dueDate = new Date(inst.due_date)
+          return dueDate.getFullYear() === selectedYear && dueDate.getMonth() === selectedMonth
+        })
+        if (monthInst) {
+          console.log(`  ✓ PARCELADO: ${e.name} - Parcela R$ ${monthInst.amount.toFixed(2)}`)
+        }
+      } else if (e.type === 'unico') {
+        console.log(`  ✓ ÚNICO: ${e.name} - R$ ${e.amount.toFixed(2)}`)
+      }
+    })
+    
+    // Logs de debug detalhados
+    const monthLabel = new Date(selectedYear, selectedMonth).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
+    console.log('═══════════════════════════════════════')
+    console.log('📊 CÁLCULO DO MÊS:', monthLabel)
+    console.log('═══════════════════════════════════════')
+    
+    // Todas as despesas fixas
+    const allFixed = expenses.filter(e => e.type === 'fixo')
+    console.log('💰 DESPESAS FIXAS (total:', fixedExpenses, '):')
+    allFixed.forEach(e => {
+      console.log(`  - ${e.name}: R$ ${e.amount.toFixed(2)}`)
+    })
+    
+    // Todas as parcelas do mês
+    const monthInsts = installments.filter(inst => {
       if (inst.status === 'paid') return false
       const dueDate = new Date(inst.due_date)
       return dueDate.getFullYear() === selectedYear && dueDate.getMonth() === selectedMonth
-    }).map(inst => ({
-      nome: expenses.find(e => e.installments?.some(i => i.id === inst.id))?.name || 'N/A',
-      valor: inst.amount,
-      data: inst.due_date
-    })))
-    console.log('📊 Detalhes dos gastos únicos:', expenses.filter(e => {
+    })
+    console.log('📦 PARCELAS DO MÊS (total:', monthInstallments, '):')
+    monthInsts.forEach(inst => {
+      const expense = expenses.find(e => e.installments?.some(i => i.id === inst.id))
+      console.log(`  - ${expense?.name || 'N/A'}: R$ ${inst.amount.toFixed(2)} (data: ${inst.due_date}, status: ${inst.status})`)
+    })
+    
+    // Todas as parcelas pagas do mês (para debug)
+    const paidInsts = installments.filter(inst => {
+      if (inst.status !== 'paid') return false
+      const dueDate = new Date(inst.due_date)
+      return dueDate.getFullYear() === selectedYear && dueDate.getMonth() === selectedMonth
+    })
+    if (paidInsts.length > 0) {
+      console.log('⚠️ PARCELAS PAGAS DO MÊS (não contadas):')
+      paidInsts.forEach(inst => {
+        const expense = expenses.find(e => e.installments?.some(i => i.id === inst.id))
+        console.log(`  - ${expense?.name || 'N/A'}: R$ ${inst.amount.toFixed(2)} (data: ${inst.due_date})`)
+      })
+    }
+    
+    // Todos os gastos únicos do mês
+    const monthUniques = expenses.filter(e => {
       if (e.type !== 'unico' || !e.due_date) return false
       const dueDate = new Date(e.due_date)
       return dueDate.getFullYear() === selectedYear && dueDate.getMonth() === selectedMonth
-    }).map(e => ({
-      nome: e.name,
-      valor: e.amount,
-      data: e.due_date
-    })))
+    })
+    console.log('🛒 GASTOS ÚNICOS DO MÊS (total:', monthUniqueExpenses, '):')
+    monthUniques.forEach(e => {
+      console.log(`  - ${e.name}: R$ ${e.amount.toFixed(2)} (data: ${e.due_date})`)
+    })
+    
+    // Gastos únicos sem data ou com data errada
+    const uniquesWithoutDate = expenses.filter(e => e.type === 'unico' && (!e.due_date || (() => {
+      if (!e.due_date) return true
+      const dueDate = new Date(e.due_date)
+      return !(dueDate.getFullYear() === selectedYear && dueDate.getMonth() === selectedMonth)
+    })()))
+    if (uniquesWithoutDate.length > 0) {
+      console.log('⚠️ GASTOS ÚNICOS NÃO CONTADOS (sem data ou data diferente):')
+      uniquesWithoutDate.forEach(e => {
+        console.log(`  - ${e.name}: R$ ${e.amount.toFixed(2)} (data: ${e.due_date || 'SEM DATA'})`)
+      })
+    }
+    
+    // Despesas parceladas sem parcelas
+    const parceledWithoutInsts = expenses.filter(e => {
+      if (e.type !== 'parcelado') return false
+      const hasInsts = e.installments && e.installments.length > 0
+      return !hasInsts
+    })
+    if (parceledWithoutInsts.length > 0) {
+      console.log('⚠️ DESPESAS PARCELADAS SEM PARCELAS:')
+      parceledWithoutInsts.forEach(e => {
+        console.log(`  - ${e.name}: R$ ${e.amount.toFixed(2)} (total_installments: ${e.total_installments})`)
+      })
+    }
+    
+    console.log('═══════════════════════════════════════')
+    console.log('📊 RESUMO:')
+    console.log(`  Despesas fixas: R$ ${fixedExpenses.toFixed(2)}`)
+    console.log(`  Parcelas do mês: R$ ${monthInstallments.toFixed(2)}`)
+    console.log(`  Gastos únicos: R$ ${monthUniqueExpenses.toFixed(2)}`)
+    console.log(`  TOTAL: R$ ${totalExpenses.toFixed(2)}`)
+    console.log('═══════════════════════════════════════')
     
     return { totalIncome, totalExpenses, balance }
   }
